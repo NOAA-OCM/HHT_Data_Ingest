@@ -84,15 +84,21 @@ for i, file in enumerate(hFiles):
                 otime = vals[0][0:4] +"-"+vals[0][4:6]+"-"+vals[0][6:] + " "
                 otime += vals[1][:2] + ":" + vals[1][2:] + ":00"
 
-                lon = float(vals[4][:4]) if vals[4][4] == "N" else -1.*float(vals[4][:4])
-                lat = float(vals[5][:5]) if vals[5][5] == "E" else -1.*float(vals[5][:5])
+                lon = (float(vals[4][:4]) if vals[4][4] == "N" 
+                         else -1. * float(vals[4][:4]))
+                lat = (float(vals[5][:5]) if vals[5][5] == "E" 
+                        else -1. * float(vals[5][:5]))
                 print(otime, lon, lat)
-                thisObs = Observation(otime,lat,lon,vals[6],vals[7],vals[3],None)
+                thisObs = Observation(otime,lat,lon,vals[6],
+                                      vals[7],vals[3],None)
                 thisStorm.obs.append(thisObs)
             """ Should be done with reading new storm data 
                 Now add it to the allStorms data if appropriate """
+            print ("thisStorm name ", thisStorm.name,"has",
+                   len(thisStorm.obs),"observations")            
             allStorms.append(thisStorm)
-            print ("Storm", allStorms[numStorms].name,"has ", len(allStorms[numStorms].obs))
+            print ("Storm", allStorms[numStorms].name,"has ", 
+                   len(allStorms[numStorms].obs))
 
 """ End of HURDAT2 Ingest and QC/QA """   
 
