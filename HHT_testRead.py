@@ -13,8 +13,8 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
 #import csv
 
 """ Declarations and Parameters """
-#workDir = "C:/GIS/Hurricane/HHT_Python/" # On Work Machine
-workDir = "/home/dave/Data/Hurricanes/" # On ZOG
+workDir = "C:/GIS/Hurricane/HHT_Python/" # On Work Machine
+#workDir = "/home/dave/Data/Hurricanes/" # On ZOG
 dataDir = workDir  # Main Data location
 h2AtlRaw = dataDir + "h2ATL.txt"     # HURDAT2 North Atlantic Data
 h2nepacRaw = dataDir + "h2NEPAC.txt" # HURDAT2 NE North Pacific Data
@@ -55,67 +55,6 @@ class Segment(Observation):
     and initialize the total storm counter """
 allStorms = []
 numStorms = -1
-
-""" Read HURDAT2 data """
-hFiles = [h2AtlRaw, h2nepacRaw]
-#hFiles = [h2AtlRaw]
-for i, file in enumerate(hFiles):
-    print (i, file)
-    with open(file, "r") as rawObsFile:
-        """h2reader = csv.reader(rawObsFile, delimiter=",")
-        for row in h2reader:
-            print(row)"""
-        """ Need a manual loop here to read a header record then 
-        the rest of the observations """   
-        while True: # With this and the below break, read to EOF
-            lineVals = rawObsFile.readline()
-            if not lineVals: # Finds EOF
-                break # Break on EOF
-
-            """ This is a new storm so create a new storm record for it """
-            numStorms += 1
-            vals = lineVals.split(",")
-            #print ("vals = ",vals[0],vals[1],vals[2], len(vals))
-            thisStorm = Storm(vals[0],vals[1])  # Create new storm using Unique ID and Name
-            thisStorm.nobs = vals[2] # Number of Observations
-            #print(thisStorm.uid, thisStorm.name, thisStorm.nobs)
-
-            for ob in range(int(thisStorm.nobs)):
-                lineVals = rawObsFile.readline()
-                if not lineVals: # Finds EOF
-                    break # Break on EOF
-                """ Create a new observation record """
-                vals = lineVals.split(", ") # Split the record into fields
-                """ Format 2 time fields to one ISO format """
-                otime = vals[0][0:4] +"-"+vals[0][4:6]+"-"+vals[0][6:] + " "
-                otime += vals[1][:2] + ":" + vals[1][2:] + ":00"
-
-                lon = (float(vals[4][:4]) if vals[4][4] == "N" 
-                         else -1. * float(vals[4][:4]))
-                lat = (float(vals[5][:5]) if vals[5][5] == "E" 
-                        else -1. * float(vals[5][:5]))
-                #print(otime, lon, lat)
-                observation = Segment(otime,     # ISO Time
-                                      lat,       # Latitude
-                                      lon,       # Longitude
-                                      vals[6],   # Wind Speed
-                                      vals[7],   # Air Pressure
-                                      vals[3] )  # Nature
-                thisStorm.segs.append(observation)
-            
-            """ All observations read for this new storm data 
-                add thisStorm to the allStorms """
-#==============================================================================
-#             print ("thisStorm name ", thisStorm.name,"has",
-#                    thisStorm.nobs, "observations and is index ", numStorms)            
-#==============================================================================
-            allStorms.append(thisStorm)
-#==============================================================================
-#             print ("Storm number ", len(allStorms)," named ",
-#                    allStorms[numStorms].name,"has ", 
-#                    len(allStorms[numStorms].segs), allStorms[numStorms].nobs)
-#==============================================================================
-""" End of HURDAT2 Ingest"""   
 
 """ Read IBTrACS data 
     This data is not split by storms, rather every row has all info in it
@@ -177,6 +116,7 @@ with open(ibRaw, "r") as rawObsFile:
                  
                  """ Create a new storm record for the newly read storm """
                  thisStorm = Storm(vals[0], vals[5]) # Create next storm
+                 """ Add the first segment information to the storm """
                  observation = Segment(vals[6],  # ISO time 
                                        vals[8],  # Lat
                                        vals[9],  # Lon
@@ -194,6 +134,69 @@ with open(ibRaw, "r") as rawObsFile:
            "should be ", nseg)
 
 """ End of IBTrACS Ingest """
+
+""" Read HURDAT2 data """
+hFiles = [h2AtlRaw, h2nepacRaw]
+#hFiles = [h2AtlRaw]
+for i, file in enumerate(hFiles):
+    print (i, file)
+    with open(file, "r") as rawObsFile:
+        """h2reader = csv.reader(rawObsFile, delimiter=",")
+        for row in h2reader:
+            print(row)"""
+        """ Need a manual loop here to read a header record then 
+        the rest of the observations """   
+        while True: # With this and the below break, read to EOF
+            lineVals = rawObsFile.readline()
+            if not lineVals: # Finds EOF
+                break # Break on EOF
+
+            """ This is a new storm so create a new storm record for it """
+            numStorms += 1
+            vals = lineVals.split(",")
+            #print ("vals = ",vals[0],vals[1],vals[2], len(vals))
+            thisStorm = Storm(vals[0],  # Create new storm using Unique ID 
+                              vals[1])  # and Name
+            thisStorm.nobs =  vals[2]    # Number of Observations
+            #print(thisStorm.uid, thisStorm.name, thisStorm.nobs)
+
+            for ob in range(int(thisStorm.nobs)):
+                lineVals = rawObsFile.readline()
+                if not lineVals: # lineVals is false at EOF
+                    break # Break on EOF
+                """ Create a new observation record """
+                vals = lineVals.split(", ") # Split the record into fields
+                """ Format 2 time fields to one ISO format """
+                otime = vals[0][0:4] +"-"+vals[0][4:6]+"-"+vals[0][6:] + " "
+                otime += vals[1][:2] + ":" + vals[1][2:] + ":00"
+
+                lon = (float(vals[4][:4]) if vals[4][4] == "N" 
+                         else -1. * float(vals[4][:4]))
+                lat = (float(vals[5][:5]) if vals[5][5] == "E" 
+                        else -1. * float(vals[5][:5]))
+                #print(otime, lon, lat)
+                observation = Segment(otime,     # ISO Time
+                                      lat,       # Latitude
+                                      lon,       # Longitude
+                                      vals[6],   # Wind Speed
+                                      vals[7],   # Air Pressure
+                                      vals[3] )  # Nature
+                thisStorm.segs.append(observation)
+            
+            """ All observations read for this new storm data 
+                add thisStorm to the allStorms """
+#==============================================================================
+#             print ("thisStorm name ", thisStorm.name,"has",
+#                    thisStorm.nobs, "observations and is index ", numStorms)            
+#==============================================================================
+            allStorms.append(thisStorm)
+#==============================================================================
+#             print ("Storm number ", len(allStorms)," named ",
+#                    allStorms[numStorms].name,"has ", 
+#                    len(allStorms[numStorms].segs), allStorms[numStorms].nobs)
+#==============================================================================
+""" End of HURDAT2 Ingest"""   
+
 # Test Min Max for Time
 #print("Max time all storms = ",(allStorms.startTime.max()))
 
