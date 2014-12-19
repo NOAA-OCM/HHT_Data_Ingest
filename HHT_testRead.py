@@ -46,6 +46,7 @@ class Observation(object):
 
 class Segment(Observation):
     def __init__(self,time,lat,lon,wsp,pres,nature):
+        super().__init__(time,lat,lon,wsp,pres,nature)
         self.endLat = None
         self.endLon = None
         self.safir = None
@@ -193,7 +194,11 @@ with open(ibRaw, "r") as rawObsFile:
            "should be ", nseg)
 
 """ End of IBTrACS Ingest """
+# Test Min Max for Time
+#print("Max time all storms = ",(allStorms.startTime.max()))
 
+for storm in allStorms:
+    print("Time = ", storm.segs[len(storm.segs)-1].time)
 """ Now process all storms for QA/QC and finding Safir-Simpson value """
             
                 
