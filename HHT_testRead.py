@@ -16,9 +16,9 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
 workDir = "C:/GIS/Hurricane/HHT_Python/" # On Work Machine
 #workDir = "/home/dave/Data/Hurricanes/" # On ZOG
 dataDir = workDir  # Main Data location
-h2AtlRaw = dataDir + "h2ATL.txt"     # HURDAT2 North Atlantic Data
-h2nepacRaw = dataDir + "h2NEPAC.txt" # HURDAT2 NE North Pacific Data
-ibRaw = dataDir + "IBx.csv"           # IBTrACS CSC version Data
+h2AtlRaw = dataDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
+h2nepacRaw = dataDir + "h2NEPACtail.txt" # HURDAT2 NE North Pacific Data
+ibRaw = dataDir + "IBtail200.csv"           # IBTrACS CSC version Data
 
 resultsDir = workDir + "Results/"  #  Location for final data
 
@@ -66,7 +66,9 @@ numStorms = -1
     We know the IBTrACS data starts with 3 header rows, then the 4th row
     is our first legitimate data record.  
     Initialize the first thisStorm object from that"""
-ibNum = 0 # Initialize IBTrACS storm counter, it will increment when storm end is found
+    
+ibNum = 0 # Initialize IBTrACS storm counter, 
+          # it will increment when storm end is found
     
 with open(ibRaw, "r") as rawObsFile:
      head1 = rawObsFile.readline()
@@ -87,10 +89,6 @@ with open(ibRaw, "r") as rawObsFile:
      thisStorm.segs.append(observation)
      nseg = 1
      """ First storm and observation entered, begin looping """
-     
-     """ NOTE BENE:  Really need to find the first storm that 
-     is not in the IBTRaCS data"""
-     
      while True: # With this and the below break, read to EOF
          lineVals = rawObsFile.readline()
          if not lineVals: # Finds EOF
@@ -129,15 +127,22 @@ with open(ibRaw, "r") as rawObsFile:
      thisStorm.numSegs = len(thisStorm.segs)
      allStorms.append(thisStorm) # Add old storm to allStorms
      ibNum += 1 # Increment counter for IBTrACS storms
-     print("Last IBTrACS storm # ",ibNum," named ",thisStorm.name,
-           " has ", thisStorm.numSegs," observations \n    which ",
-           "should be ", nseg)
+#==============================================================================
+#      print("Last IBTrACS storm # ",ibNum," named ",thisStorm.name,
+#            " has ", thisStorm.numSegs," observations \n    which ",
+#            "should be ", nseg)
+#==============================================================================
 
 """ End of IBTrACS Ingest """
 
 """ Read HURDAT2 data """
+     
+""" NOTE BENE:  Really need to find the first storm that 
+    is not in the IBTRaCS data  """
+     
+
 hFiles = [h2AtlRaw, h2nepacRaw]
-#hFiles = [h2AtlRaw]
+hFiles = [h2AtlRaw]
 for i, file in enumerate(hFiles):
     print (i, file)
     with open(file, "r") as rawObsFile:
@@ -174,7 +179,7 @@ for i, file in enumerate(hFiles):
                          else -1. * float(vals[4][:4]))
                 lat = (float(vals[5][:5]) if vals[5][5] == "E" 
                         else -1. * float(vals[5][:5]))
-                #print(otime, lon, lat)
+                print(otime, lon, lat)
                 observation = Segment(otime,     # ISO Time
                                       lat,       # Latitude
                                       lon,       # Longitude
@@ -187,7 +192,7 @@ for i, file in enumerate(hFiles):
                 add thisStorm to the allStorms """
 #==============================================================================
 #             print ("thisStorm name ", thisStorm.name,"has",
-#                    thisStorm.nobs, "observations and is index ", numStorms)            
+#                     thisStorm.nobs, "observations and is index ", numStorms)            
 #==============================================================================
             allStorms.append(thisStorm)
 #==============================================================================
