@@ -14,9 +14,10 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
 
 """ Declarations and Parameters """
 workDir = "C:/GIS/Hurricane/HHT_Python/" # On Work Machine
-#workDir = "/home/dave/Data/Hurricanes/" # On ZOG
+workDir = "/home/dave/Data/Hurricanes/" # On Zog
 dataDir = workDir  # Main Data location
 h2AtlRaw = dataDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
+#h2AtlRaw = dataDir + "foo"     # HURDAT2 North Atlantic Data
 h2nepacRaw = dataDir + "h2NEPACtail.txt" # HURDAT2 NE North Pacific Data
 ibRaw = dataDir + "IBtail200.csv"           # IBTrACS CSC version Data
 
@@ -79,14 +80,15 @@ with open(ibRaw, "r") as rawObsFile:
      lineVals = rawObsFile.readline() # First Storm record in IBTrACS
      vals = lineVals.split(",")
 
-     thisStorm = Storm(vals[0], vals[5]) # Create first storm
-     observation = Segment(vals[6],  # ISO time 
+     thisStorm = Storm(vals[0], vals[5].strip()) # Create first storm
+     observation = Segment(vals[6],  # ISO 8601 Time 
                            vals[8],  # Lat
                            vals[9],  # Lon
                            vals[10], # Wind speed
                            vals[11], # Pressure
                            vals[7] ) # Nature
      thisStorm.segs.append(observation)
+     thisStorm.startTime = observation.time
      nseg = 1
      """ First storm and observation entered, begin looping """
      while True: # With this and the below break, read to EOF
@@ -96,7 +98,7 @@ with open(ibRaw, "r") as rawObsFile:
          else: # Data read: Parse it and test to see if it is a new storm
              vals = lineVals.split(",")
              if vals[0] == thisStorm.uid :  # Same storm so add the record
-                 observation = Segment(vals[6],  # ISO time 
+                 observation = Segment(vals[6],  # ISO 8601 Time 
                                        vals[8],  # Lat
                                        vals[9],  # Lon
                                        vals[10], # Wind speed
@@ -108,20 +110,23 @@ with open(ibRaw, "r") as rawObsFile:
                  thisStorm.numSegs = len(thisStorm.segs)
                  allStorms.append(thisStorm) # Add old storm to allStorms
                  ibNum += 1 # Increment counter for IBTrACS storms
-                 print("IBTrACS storm # ",ibNum," named ",thisStorm.name,
-                       " has ", thisStorm.numSegs," observations \n    which ",
-                       "should be ", nseg)
+#==============================================================================
+#                  print("IBTrACS storm # ",ibNum," named ",thisStorm.name,
+#                        " has ", thisStorm.numSegs," observations \n    which ",
+#                        "should be ", nseg)
+#==============================================================================
                  
                  """ Create a new storm record for the newly read storm """
-                 thisStorm = Storm(vals[0], vals[5]) # Create next storm
+                 thisStorm = Storm(vals[0], vals[5].strip()) # Create next storm
                  """ Add the first segment information to the storm """
-                 observation = Segment(vals[6],  # ISO time 
+                 observation = Segment(vals[6],  # ISO 8601 Time 
                                        vals[8],  # Lat
                                        vals[9],  # Lon
                                        vals[10], # Wind speed
                                        vals[11], # Pressure
                                        vals[7] ) # Nature
                  thisStorm.segs.append(observation)
+                 thisStorm.startTime = observation.time
                  nseg = 1 # New storm ready for next record
      """ EOF found on IBTrACS: Write last data and close out """           
      thisStorm.numSegs = len(thisStorm.segs)
@@ -142,7 +147,7 @@ with open(ibRaw, "r") as rawObsFile:
      
 
 hFiles = [h2AtlRaw, h2nepacRaw]
-hFiles = [h2AtlRaw]
+#hFiles = [h2AtlRaw]
 for i, file in enumerate(hFiles):
     print (i, file)
     with open(file, "r") as rawObsFile:
@@ -153,7 +158,8 @@ for i, file in enumerate(hFiles):
         the rest of the observations """   
         while True: # With this and the below break, read to EOF
             lineVals = rawObsFile.readline()
-            if not lineVals: # Finds EOF
+            if ( (not lineVals) # Finds EOF or any blank line
+            or lineVals == "\n" or lineVals == "\r" or lineVals == "\n\r"): 
                 break # Break on EOF
 
             """ This is a new storm so create a new storm record for it """
@@ -161,13 +167,15 @@ for i, file in enumerate(hFiles):
             vals = lineVals.split(",")
             #print ("vals = ",vals[0],vals[1],vals[2], len(vals))
             thisStorm = Storm(vals[0],  # Create new storm using Unique ID 
-                              vals[1])  # and Name
-            thisStorm.nobs =  vals[2]    # Number of Observations
-            #print(thisStorm.uid, thisStorm.name, thisStorm.nobs)
+                              vals[1].strip())  # and Name w/out spaces
+            thisStorm.nobs =  int(vals[2])    # Number of Observations
+            print(thisStorm.uid, thisStorm.name, thisStorm.nobs)
 
-            for ob in range(int(thisStorm.nobs)):
+            for ob in range(thisStorm.nobs):
                 lineVals = rawObsFile.readline()
-                if not lineVals: # lineVals is false at EOF
+                if ( (not lineVals) # Finds EOF or any blank line
+                or lineVals == "\n" or lineVals == "\r" 
+                or lineVals == "\n\r"): # lineVals is false at EOF
                     break # Break on EOF
                 """ Create a new observation record """
                 vals = lineVals.split(", ") # Split the record into fields
@@ -179,21 +187,21 @@ for i, file in enumerate(hFiles):
                          else -1. * float(vals[4][:4]))
                 lat = (float(vals[5][:5]) if vals[5][5] == "E" 
                         else -1. * float(vals[5][:5]))
-                print(otime, lon, lat)
-                observation = Segment(otime,     # ISO Time
+                #print(otime, lon, lat)
+                observation = Segment(otime,     # ISO 8601 Time
                                       lat,       # Latitude
                                       lon,       # Longitude
                                       vals[6],   # Wind Speed
                                       vals[7],   # Air Pressure
                                       vals[3] )  # Nature
                 thisStorm.segs.append(observation)
-            
             """ All observations read for this new storm data 
                 add thisStorm to the allStorms """
 #==============================================================================
 #             print ("thisStorm name ", thisStorm.name,"has",
 #                     thisStorm.nobs, "observations and is index ", numStorms)            
 #==============================================================================
+            thisStorm.startTime = thisStorm.segs[0].time
             allStorms.append(thisStorm)
 #==============================================================================
 #             print ("Storm number ", len(allStorms)," named ",
@@ -204,10 +212,12 @@ for i, file in enumerate(hFiles):
 
 # Test Min Max for Time
 #print("Max time all storms = ",(allStorms.startTime.max()))
-
+allSorted = sorted(allStorms, key = lambda storm: storm.startTime)
 for storm in allStorms:
-    print("Time = ", storm.segs[len(storm.segs)-1].time)
+    print("Name, Time = ", storm.name, storm.segs[0].time)
 """ Now process all storms for QA/QC and finding Safir-Simpson value """
+for storm in allSorted:
+    print("SORTED: Name, Time = ", storm.name, storm.segs[0].time)
             
                 
 
