@@ -10,18 +10,29 @@ Created 2014-12-11 by David L Eslinger (DLE)
 Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
 
 """
-#import csv
 
 """ Declarations and Parameters """
 workDir = "C:/GIS/Hurricane/HHT_Python/" # On Work Machine
 #workDir = "/home/dave/Data/Hurricanes/" # On Zog
-dataDir = workDir  # Main Data location
-h2AtlRaw = dataDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
-#h2AtlRaw = dataDir + "foo"     # HURDAT2 North Atlantic Data
-h2nepacRaw = dataDir + "h2NEPACtail.txt" # HURDAT2 NE North Pacific Data
-ibRaw = dataDir + "IBtail200.csv"           # IBTrACS CSC version Data
+dataDir = workDir  # Testing Data location
+h2nepacRaw = workDir + "h2NEPACtail.txt" # HURDAT2 NE North Pacific Data
+h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
+ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
+#==============================================================================
+# h2_dataDir = "C:/GIS/Hurricane/HURDAT/"  # Main Data location
+# ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r06/"  # Main Data location
+# h2AtlRaw = h2_dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
+# h2nepacRaw = h2_dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
+# ibRaw = ib_dataDir + "Allstorms.ibtracs_csc.v03r06.csv"           # IBTrACS CSC version Data
+#==============================================================================
 
 resultsDir = workDir + "Results/"  #  Location for final data
+
+""" Choose to use either HURDAT2 data as the 'base' data layer (a new
+    behaviour) or to use IBTrACS as the 'base' depending on the 
+    use_HURDAT variable: """
+use_HURDAT = False
+    
 
 """ Create needed Objects """
 class Storm(object):
@@ -37,7 +48,6 @@ class Storm(object):
         self.maxSafir = ""
         self.enso = ""
         self.source = ""  # 0 = IBTrACS, 1 or 2 = HURDAT2 Atl, NEPAC
-
 
 class Observation(object):
     def __init__(self,time,lat,lon,wsp,pres,nature):
@@ -93,6 +103,8 @@ with open(ibRaw, "r") as rawObsFile:
                            vals[7] ) # Nature
      thisStorm.segs.append(observation)
      thisStorm.startTime = observation.time
+     # enter end time in case this is only observation.
+     thisStorm.endTime = observation.time 
      nseg = 1
      thisStorm.source = 0            # Flag data source as IBTrACS
      """ First storm and observation entered, begin looping """
@@ -109,6 +121,7 @@ with open(ibRaw, "r") as rawObsFile:
                                        vals[10], # Wind speed
                                        vals[11], # Pressure
                                        vals[7] ) # Nature
+                 thisStorm.endTime = observation.time #update end time
                  thisStorm.segs.append(observation)
                  nseg += 1
              else: #Found a new storm so...
@@ -122,7 +135,8 @@ with open(ibRaw, "r") as rawObsFile:
 #==============================================================================
                  
                  """ Create a new storm record for the newly read storm """
-                 thisStorm = Storm(vals[0], vals[5].strip()) # Create next storm
+                 thisStorm = Storm(vals[0],          # Unique IBTrACS ID
+                                   vals[5].strip())  # Name, spaces removed
                  """ Add the first segment information to the storm """
                  observation = Segment(vals[6],  # ISO 8601 Time 
                                        vals[8],  # Lat
@@ -132,6 +146,8 @@ with open(ibRaw, "r") as rawObsFile:
                                        vals[7] ) # Nature
                  thisStorm.segs.append(observation)
                  thisStorm.startTime = observation.time
+                 # enter end time in case this is only observation.
+                 thisStorm.endTime = observation.time 
                  nseg = 1 # New storm ready for next record
                  thisStorm.source = 0 # Flag data source as IBTrACS
      """ EOF found on IBTrACS: Write last data and close out """           
@@ -152,9 +168,11 @@ with open(ibRaw, "r") as rawObsFile:
     is not in the IBTRaCS data  """    
 
 hFiles = [h2AtlRaw, h2nepacRaw]
+hstormNum = [0,0]
 #hFiles = [h2AtlRaw]
 for i, file in enumerate(hFiles):
     print (i, file)
+    hstormNum[i] = 0
     with open(file, "r") as rawObsFile:
         """h2reader = csv.reader(rawObsFile, delimiter=",")
         for row in h2reader:
@@ -169,6 +187,7 @@ for i, file in enumerate(hFiles):
 
             """ This is a new storm so create a new storm record for it """
             numStorms += 1
+            hstormNum[i] += 1
             vals = lineVals.split(",")
             #print ("vals = ",vals[0],vals[1],vals[2], len(vals))
             thisStorm = Storm(vals[0],  # Create new storm using Unique ID 
@@ -176,7 +195,7 @@ for i, file in enumerate(hFiles):
             thisStorm.nobs =  int(vals[2])    # Number of Observations
             thisStorm.source = i + 1 # Flag data source as HURDAT ATL or NEPAC
 
-            print(thisStorm.uid, thisStorm.name, thisStorm.nobs)
+#            print(thisStorm.uid, thisStorm.name, thisStorm.nobs)
 
             for ob in range(thisStorm.nobs):
                 lineVals = rawObsFile.readline()
@@ -209,6 +228,7 @@ for i, file in enumerate(hFiles):
 #                     thisStorm.nobs, "observations and is index ", numStorms)            
 #==============================================================================
             thisStorm.startTime = thisStorm.segs[0].time
+            thisStorm.endTime = thisStorm.segs[len(thisStorm.segs)-1].time
             allStorms.append(thisStorm)
 #==============================================================================
 #             print ("Storm number ", len(allStorms)," named ",
@@ -217,15 +237,100 @@ for i, file in enumerate(hFiles):
 #==============================================================================
 """ End of HURDAT2 Ingest"""   
 
-# Test Min Max for Time
-#print("Max time all storms = ",(allStorms.startTime.max()))
+""" Sort combined storms and keep unique ones
+    Use sotrm.source field to pick either HURDAT or IBTrACS storms
+    based on value of use_HURDAT boolean """
+    
 allSorted = sorted(allStorms, key = lambda storm: storm.startTime)
-for storm in allStorms:
-    print("Name, Time = ", storm.name, storm.segs[0].time)
-""" Now process all storms for QA/QC and finding Safir-Simpson value """
-for storm in allSorted:
-    print("SORTED: Source, Name, Time, source = ", 
-          storm.source, storm.name, storm.segs[0].time)
+#allSorted = sorted(allStorms, key = lambda storm: storm.name)
+#==============================================================================
+# for storm in allStorms:
+#     print("Name, Time = ", storm.name, storm.segs[0].time)
+#==============================================================================
+#==============================================================================
+# for storm in allSorted:
+#    print("SORTED: Source, UID, Name, Time, source = ", 
+#          storm.source, storm.uid, storm.name, storm.segs[0].time)
+#==============================================================================
+
+allStorms = [] # Clear allStorms variable to use for unique storms
+allStorms.append(allSorted[0])
+nDups = 0
+
+for i in range(1,len(allSorted)):
+#    print('i =',i)
+    """ If time is different from previous storm then copy to allStorms """
+    if allSorted[i].startTime != allSorted[i-1].startTime:
+        allStorms.append(allSorted[i])
+        if allSorted[i].source:
+            print ("H2[{0}] Only Storm {1} from {2} to {3}".format(
+            allSorted[i].source,allSorted[i].name, 
+            allSorted[i].startTime, allSorted[i].endTime))
+#    """ Storms begin at same time.  Check to see if their names are the same.
+#       This could happen if either string is contained within the other. """
+    elif (    allSorted[i].name.find(allSorted[i-1].name) == -1 
+          and allSorted[i-1].name.find(allSorted[i].name) == -1 ):
+        allStorms.append(allSorted[i]) 
+    else:
+        nDups += 1
+#==============================================================================
+#         print ('\n', nDups, 'sets of duplicate storms found! \n',
+#                'Source, Name, Start Date \n',
+#                allSorted[i-1].source, allSorted[i-1].name, 
+#                 allSorted[i-1].startTime, 'and \n',
+#                allSorted[i].source,allSorted[i].name,allSorted[i].startTime)
+#==============================================================================
+#==============================================================================
+# 
+# """Now sort by name"""
+# allSorted = sorted(allStorms, key = lambda storm: storm.name)
+# #==============================================================================
+# # for storm in allStorms:
+# #     print("Name, Time = ", storm.name, storm.segs[0].time)
+# #==============================================================================
+# #==============================================================================
+# # for storm in allSorted:
+# #    print("SORTED: Source, UID, Name, Time, source = ", 
+# #          storm.source, storm.uid, storm.name, storm.segs[0].time)
+# #==============================================================================
+# 
+# allStorms = [] # Clear allStorms variable to use for unique storms
+# allStorms.append(allSorted[0])
+# nDup2s = 0
+# 
+# for i in range(1,len(allSorted)):
+# #    print('i =',i)
+#     """ If time is different from previous storm then copy to allStorms """
+#     if allSorted[i].startTime != allSorted[i-1].startTime:
+#         allStorms.append(allSorted[i])
+#         if allSorted[i].source:
+#             print ("H2[{0}] Only Storm {1} from {2} to {3}".format(
+#             allSorted[i].source,allSorted[i].name, 
+#             allSorted[i].startTime, allSorted[i].endTime))
+# #    """ Storms begin at same time.  Check to see if their names are the same.
+# #       This could happen if either string is contained within the other. """
+#     elif (    allSorted[i].name.find(allSorted[i-1].name) == -1 
+#           and allSorted[i-1].name.find(allSorted[i].name) == -1 ):
+#         allStorms.append(allSorted[i]) 
+#     else:
+#         nDup2s += 1
+# #==============================================================================
+# #         print ('\n', nDups, 'sets of duplicate storms found! \n',
+# #                'Source, Name, Start Date \n',
+# #                allSorted[i-1].source, allSorted[i-1].name, 
+# #                 allSorted[i-1].startTime, 'and \n',
+# #                allSorted[i].source,allSorted[i].name,allSorted[i].startTime)
+# #==============================================================================
+#==============================================================================
+
+print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
+        ibNum, hstormNum[0], hstormNum[1]), "\n ",
+        "Total storms = {0}, Unique storms = {1}".format(
+        len(allSorted),len(allStorms)), 
+        "\nDuplicated storms: {0}, {1}".format(nDups,"" ))#nDup2s))
+
+""" Now process unique storms for QA/QC and finding Safir-Simpson value """
+
             
                 
 
