@@ -14,7 +14,7 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
 
 """ Declarations and Parameters """
 workDir = "C:/GIS/Hurricane/HHT_Python/" # On Work Machine
-workDir = "/home/dave/Data/Hurricanes/" # On Zog
+#workDir = "/home/dave/Data/Hurricanes/" # On Zog
 dataDir = workDir  # Main Data location
 h2AtlRaw = dataDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #h2AtlRaw = dataDir + "foo"     # HURDAT2 North Atlantic Data
@@ -35,6 +35,9 @@ class Storm(object):
         self.startTime = None
         self.endTime = None
         self.maxSafir = ""
+        self.enso = ""
+        self.source = ""  # 0 = IBTrACS, 1 or 2 = HURDAT2 Atl, NEPAC
+
 
 class Observation(object):
     def __init__(self,time,lat,lon,wsp,pres,nature):
@@ -79,8 +82,9 @@ with open(ibRaw, "r") as rawObsFile:
      """ Read first IBTrACS Record """
      lineVals = rawObsFile.readline() # First Storm record in IBTrACS
      vals = lineVals.split(",")
-
-     thisStorm = Storm(vals[0], vals[5].strip()) # Create first storm
+     """ Create first storm """
+     thisStorm = Storm(vals[0],          # Unique IBTrACS ID
+                       vals[5].strip())  # Name, spaces removed
      observation = Segment(vals[6],  # ISO 8601 Time 
                            vals[8],  # Lat
                            vals[9],  # Lon
@@ -90,6 +94,7 @@ with open(ibRaw, "r") as rawObsFile:
      thisStorm.segs.append(observation)
      thisStorm.startTime = observation.time
      nseg = 1
+     thisStorm.source = 0            # Flag data source as IBTrACS
      """ First storm and observation entered, begin looping """
      while True: # With this and the below break, read to EOF
          lineVals = rawObsFile.readline()
@@ -128,6 +133,7 @@ with open(ibRaw, "r") as rawObsFile:
                  thisStorm.segs.append(observation)
                  thisStorm.startTime = observation.time
                  nseg = 1 # New storm ready for next record
+                 thisStorm.source = 0 # Flag data source as IBTrACS
      """ EOF found on IBTrACS: Write last data and close out """           
      thisStorm.numSegs = len(thisStorm.segs)
      allStorms.append(thisStorm) # Add old storm to allStorms
@@ -142,9 +148,8 @@ with open(ibRaw, "r") as rawObsFile:
 
 """ Read HURDAT2 data """
      
-""" NOTE BENE:  Really need to find the first storm that 
-    is not in the IBTRaCS data  """
-     
+""" NOTE BENE:  May prefer to find the first storm that 
+    is not in the IBTRaCS data  """    
 
 hFiles = [h2AtlRaw, h2nepacRaw]
 #hFiles = [h2AtlRaw]
@@ -169,6 +174,8 @@ for i, file in enumerate(hFiles):
             thisStorm = Storm(vals[0],  # Create new storm using Unique ID 
                               vals[1].strip())  # and Name w/out spaces
             thisStorm.nobs =  int(vals[2])    # Number of Observations
+            thisStorm.source = i + 1 # Flag data source as HURDAT ATL or NEPAC
+
             print(thisStorm.uid, thisStorm.name, thisStorm.nobs)
 
             for ob in range(thisStorm.nobs):
@@ -217,7 +224,8 @@ for storm in allStorms:
     print("Name, Time = ", storm.name, storm.segs[0].time)
 """ Now process all storms for QA/QC and finding Safir-Simpson value """
 for storm in allSorted:
-    print("SORTED: Name, Time = ", storm.name, storm.segs[0].time)
+    print("SORTED: Source, Name, Time, source = ", 
+          storm.source, storm.name, storm.segs[0].time)
             
                 
 
