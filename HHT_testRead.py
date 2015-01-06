@@ -14,17 +14,19 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
 """ Declarations and Parameters """
 workDir = "C:/GIS/Hurricane/HHT_Python/" # On Work Machine
 #workDir = "/home/dave/Data/Hurricanes/" # On Zog
-dataDir = workDir  # Testing Data location
-h2nepacRaw = workDir + "h2NEPACtail.txt" # HURDAT2 NE North Pacific Data
-h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
-ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-# h2_dataDir = "C:/GIS/Hurricane/HURDAT/"  # Main Data location
-# ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r06/"  # Main Data location
-# h2AtlRaw = h2_dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
-# h2nepacRaw = h2_dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
-# ibRaw = ib_dataDir + "Allstorms.ibtracs_csc.v03r06.csv"           # IBTrACS CSC version Data
+# dataDir = workDir  # Testing Data location
+# h2nepacRaw = workDir + "h2NEPACtail.txt" # HURDAT2 NE North Pacific Data
+# h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
+# ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
+h2_dataDir = "C:/GIS/Hurricane/HURDAT/"  # Main Data location
+h2AtlRaw = h2_dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
+h2nepacRaw = h2_dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
+ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r06/"  # Main Data location
+ibRaw = ib_dataDir + "Allstorms.ibtracs_csc.v03r06.csv"           # IBTrACS CSC version Data
+#ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r04/"  # Main Data location
+#ibRaw = ib_dataDir + "Allstorms.ibtracs_wmo.v03r04.csv"           # IBTrACS CSC version Data
 
 resultsDir = workDir + "Results/"  #  Location for final data
 
@@ -32,7 +34,7 @@ resultsDir = workDir + "Results/"  #  Location for final data
     behaviour) or to use IBTrACS as the 'base' depending on the 
     use_HURDAT variable: """
 use_HURDAT = False
-    
+dupRange = 5    
 
 """ Create needed Objects """
 class Storm(object):
@@ -249,80 +251,71 @@ allSorted = sorted(allStorms, key = lambda storm: storm.startTime)
 #==============================================================================
 #==============================================================================
 # for storm in allSorted:
-#    print("SORTED: Source, UID, Name, Time, source = ", 
+#     if storm.startTime.find('2009') > -1:
+#         print("SORTED: Source, UID, Name, Time, source = ", 
 #          storm.source, storm.uid, storm.name, storm.segs[0].time)
 #==============================================================================
 
 allStorms = [] # Clear allStorms variable to use for unique storms
-allStorms.append(allSorted[0])
+allStorms.append(allSorted[0]) # Add first storm to the non-duplicate list
 nDups = 0
 
-for i in range(1,len(allSorted)):
+for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
 #    print('i =',i)
-    """ If time is different from previous storm then copy to allStorms """
-    if allSorted[i].startTime != allSorted[i-1].startTime:
+    """ Compare current Storm to dupRange of previously identified "good"
+        storms in the AllStorms list """
+    isDuplicate = False # intialize the flag for this storm
+    dupIndex = None
+    """ Iterate from end of allStorms, backward by dupRange records, or just
+        to the length of allStorms, whichever is shortest """
+    lastGood = len(allStorms)-1
+    for j in range(lastGood,lastGood-min(dupRange, lastGood),-1 ):
+        """ To find a duplicate name, use the .find method for stings.  
+        This will return a value of '-1' if the string is not found.  
+        NOTE: The IBtRACS names are frequently combinations of names 
+        from multiple reporting Centers.  
+        Therefore, we need to do this check for both 'directions' and 
+        if we add the results, we shoudl get '-2' for no duplicates"""
+        sameName = ( allSorted[i].name.find(allStorms[j].name)
+                 + allStorms[j].name.find(allSorted[i].name)  )
+        if sameName != -2: #Duplicate names found
+            if ( allSorted[i].name.find("NAMED") == -1 or 
+                 allSorted[i].name.find("UNKNOWN") == -1 ):
+               pass #may not be duplicates
+            else:
+               nDups += 1
+               isDuplicate = True
+               dupIndex = j
+               break
+    
+    if isDuplicate:
+#==============================================================================
+#         print ('\n', nDups, 'sets of duplicate storms found! \n',
+#                'Source, Name, Start Date \n',
+#                allSorted[i].source, allSorted[i].name,
+#                allSorted[i].startTime, 'and \n',
+#                allStorms[dupIndex].source,allStorms[dupIndex].name,
+#                allStorms[dupIndex].startTime)
+#==============================================================================
+        if use_HURDAT:
+             if allSorted[i].source: #This is a HURDAT record so replace old one
+                 allStorms[dupIndex] = allSorted[i]
+             else: # The existing allStorm record is HURDAT, so keep it
+                 pass
+        else: # Want to use IBTrACS for duplicates
+            if allSorted[i].source: #The new record is HURDAT, so skip it
+                pass
+            else: # The existing allStorm record is HURDAT, so replace it
+                allStorms[dupIndex] = allSorted[i]
+
+    else: # not a duplicate, so copy it to allStorms
         allStorms.append(allSorted[i])
         if allSorted[i].source:
             print ("H2[{0}] Only Storm {1} from {2} to {3}".format(
             allSorted[i].source,allSorted[i].name, 
             allSorted[i].startTime, allSorted[i].endTime))
-#    """ Storms begin at same time.  Check to see if their names are the same.
-#       This could happen if either string is contained within the other. """
-    elif (    allSorted[i].name.find(allSorted[i-1].name) == -1 
-          and allSorted[i-1].name.find(allSorted[i].name) == -1 ):
-        allStorms.append(allSorted[i]) 
-    else:
-        nDups += 1
-#==============================================================================
-#         print ('\n', nDups, 'sets of duplicate storms found! \n',
-#                'Source, Name, Start Date \n',
-#                allSorted[i-1].source, allSorted[i-1].name, 
-#                 allSorted[i-1].startTime, 'and \n',
-#                allSorted[i].source,allSorted[i].name,allSorted[i].startTime)
-#==============================================================================
-#==============================================================================
-# 
-# """Now sort by name"""
-# allSorted = sorted(allStorms, key = lambda storm: storm.name)
-# #==============================================================================
-# # for storm in allStorms:
-# #     print("Name, Time = ", storm.name, storm.segs[0].time)
-# #==============================================================================
-# #==============================================================================
-# # for storm in allSorted:
-# #    print("SORTED: Source, UID, Name, Time, source = ", 
-# #          storm.source, storm.uid, storm.name, storm.segs[0].time)
-# #==============================================================================
-# 
-# allStorms = [] # Clear allStorms variable to use for unique storms
-# allStorms.append(allSorted[0])
-# nDup2s = 0
-# 
-# for i in range(1,len(allSorted)):
-# #    print('i =',i)
-#     """ If time is different from previous storm then copy to allStorms """
-#     if allSorted[i].startTime != allSorted[i-1].startTime:
-#         allStorms.append(allSorted[i])
-#         if allSorted[i].source:
-#             print ("H2[{0}] Only Storm {1} from {2} to {3}".format(
-#             allSorted[i].source,allSorted[i].name, 
-#             allSorted[i].startTime, allSorted[i].endTime))
-# #    """ Storms begin at same time.  Check to see if their names are the same.
-# #       This could happen if either string is contained within the other. """
-#     elif (    allSorted[i].name.find(allSorted[i-1].name) == -1 
-#           and allSorted[i-1].name.find(allSorted[i].name) == -1 ):
-#         allStorms.append(allSorted[i]) 
-#     else:
-#         nDup2s += 1
-# #==============================================================================
-# #         print ('\n', nDups, 'sets of duplicate storms found! \n',
-# #                'Source, Name, Start Date \n',
-# #                allSorted[i-1].source, allSorted[i-1].name, 
-# #                 allSorted[i-1].startTime, 'and \n',
-# #                allSorted[i].source,allSorted[i].name,allSorted[i].startTime)
-# #==============================================================================
-#==============================================================================
-
+            
+ 
 print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
         ibNum, hstormNum[0], hstormNum[1]), "\n ",
         "Total storms = {0}, Unique storms = {1}".format(
