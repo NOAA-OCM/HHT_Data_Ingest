@@ -249,12 +249,10 @@ allSorted = sorted(allStorms, key = lambda storm: storm.startTime)
 # for storm in allStorms:
 #     print("Name, Time = ", storm.name, storm.segs[0].time)
 #==============================================================================
-#==============================================================================
-# for storm in allSorted:
-#     if storm.startTime.find('2009') > -1:
-#         print("SORTED: Source, UID, Name, Time, source = ", 
-#          storm.source, storm.uid, storm.name, storm.segs[0].time)
-#==============================================================================
+for storm in allSorted:
+    if storm.startTime.find('2013') > -1:
+        print("SORTED: Source, UID, Name, Time, source = ", 
+         storm.source, storm.uid, storm.name, storm.segs[0].time)
 
 allStorms = [] # Clear allStorms variable to use for unique storms
 allStorms.append(allSorted[0]) # Add first storm to the non-duplicate list
@@ -276,11 +274,17 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
         from multiple reporting Centers.  
         Therefore, we need to do this check for both 'directions' and 
         if we add the results, we shoudl get '-2' for no duplicates"""
-        sameName = ( allSorted[i].name.find(allStorms[j].name)
-                 + allStorms[j].name.find(allSorted[i].name)  )
-        if sameName != -2: #Duplicate names found
-            if ( allSorted[i].name.find("NAMED") == -1 or 
-                 allSorted[i].name.find("UNKNOWN") == -1 ):
+#==============================================================================
+#         sameName = ( allSorted[i].name.find(allStorms[j].name)
+#                  + allStorms[j].name.find(allSorted[i].name)  )
+#==============================================================================
+        AsortedName = allSorted[i].name
+        AallName =  allStorms[j].name  
+        AallInSorted = AsortedName.find(AallName)
+        AsortedInAll =  AallName.find(AsortedName)  
+        if AallInSorted + AsortedInAll != -2: #Duplicate names found
+            if ( allSorted[i].name.find("NAMED") != -1 and 
+                 allSorted[i].name.find("UNKNOWN") != -1 ):
                pass #may not be duplicates
             else:
                nDups += 1
@@ -289,14 +293,12 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
                break
     
     if isDuplicate:
-#==============================================================================
-#         print ('\n', nDups, 'sets of duplicate storms found! \n',
-#                'Source, Name, Start Date \n',
-#                allSorted[i].source, allSorted[i].name,
-#                allSorted[i].startTime, 'and \n',
-#                allStorms[dupIndex].source,allStorms[dupIndex].name,
-#                allStorms[dupIndex].startTime)
-#==============================================================================
+        print ('\n', nDups, 'sets of duplicate storms found! \n',
+               'Source, Name, Start Date \n',
+               allSorted[i].source, allSorted[i].name,
+               allSorted[i].startTime, 'and \n',
+               allStorms[dupIndex].source,allStorms[dupIndex].name,
+               allStorms[dupIndex].startTime)
         if use_HURDAT:
              if allSorted[i].source: #This is a HURDAT record so replace old one
                  allStorms[dupIndex] = allSorted[i]
