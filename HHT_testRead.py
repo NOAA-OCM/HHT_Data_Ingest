@@ -12,21 +12,22 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
 """
 
 """ Declarations and Parameters """
-workDir = "C:/GIS/Hurricane/HHT_Python/" # On Work Machine
+TESTING = False
+workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
 #workDir = "/home/dave/Data/Hurricanes/" # On Zog
-#==============================================================================
-# dataDir = workDir  # Testing Data location
-# h2nepacRaw = workDir + "h2NEPACtail.txt" # HURDAT2 NE North Pacific Data
-# h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
-# ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
-#==============================================================================
-h2_dataDir = "C:/GIS/Hurricane/HURDAT/"  # Main Data location
-h2AtlRaw = h2_dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
-h2nepacRaw = h2_dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
-ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r06/"  # Main Data location
-ibRaw = ib_dataDir + "Allstorms.ibtracs_csc.v03r06.csv"           # IBTrACS CSC version Data
-#ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r04/"  # Main Data location
-#ibRaw = ib_dataDir + "Allstorms.ibtracs_wmo.v03r04.csv"           # IBTrACS CSC version Data
+if TESTING:  
+    dataDir = workDir  # Testing Data location
+    h2nepacRaw = workDir + "h2NEPACtail.txt" # HURDAT2 NE North Pacific Data
+    h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
+    ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
+else:
+    h2_dataDir = "C:/GIS/Hurricane/HURDAT/"  # Main Data location
+    h2AtlRaw = h2_dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
+    h2nepacRaw = h2_dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
+    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r06/"  # Main Data location
+    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r06.csv"           # IBTrACS CSC version Data
+#    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r04/"  # Main Data location
+#    ibRaw = ib_dataDir + "Allstorms.ibtracs_wmo.v03r04.csv"           # IBTrACS CSC version Data
 
 resultsDir = workDir + "Results/"  #  Location for final data
 
@@ -249,10 +250,12 @@ allSorted = sorted(allStorms, key = lambda storm: storm.startTime)
 # for storm in allStorms:
 #     print("Name, Time = ", storm.name, storm.segs[0].time)
 #==============================================================================
-for storm in allSorted:
-    if storm.startTime.find('2013') > -1:
-        print("SORTED: Source, UID, Name, Time, source = ", 
-         storm.source, storm.uid, storm.name, storm.segs[0].time)
+#==============================================================================
+# for storm in allSorted:
+#     if storm.startTime.find('2013') > -1:
+#         print("SORTED: Source, UID, Name, Time, source = ", 
+#          storm.source, storm.uid, storm.name, storm.segs[0].time)
+#==============================================================================
 
 allStorms = [] # Clear allStorms variable to use for unique storms
 allStorms.append(allSorted[0]) # Add first storm to the non-duplicate list
@@ -273,7 +276,7 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
         NOTE: The IBtRACS names are frequently combinations of names 
         from multiple reporting Centers.  
         Therefore, we need to do this check for both 'directions' and 
-        if we add the results, we shoudl get '-2' for no duplicates"""
+        if we add the results, we should get '-2' for no duplicates"""
 #==============================================================================
 #         sameName = ( allSorted[i].name.find(allStorms[j].name)
 #                  + allStorms[j].name.find(allSorted[i].name)  )
@@ -283,8 +286,8 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
         AallInSorted = AsortedName.find(AallName)
         AsortedInAll =  AallName.find(AsortedName)  
         if AallInSorted + AsortedInAll != -2: #Duplicate names found
-            if ( allSorted[i].name.find("NAMED") != -1 and 
-                 allSorted[i].name.find("UNKNOWN") != -1 ):
+            if ( allSorted[i].name.find("NAME") != -1 or 
+                 allSorted[i].name.find("KNOWN") != -1 ):
                pass #may not be duplicates
             else:
                nDups += 1
@@ -293,12 +296,14 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
                break
     
     if isDuplicate:
-        print ('\n', nDups, 'sets of duplicate storms found! \n',
-               'Source, Name, Start Date \n',
-               allSorted[i].source, allSorted[i].name,
-               allSorted[i].startTime, 'and \n',
-               allStorms[dupIndex].source,allStorms[dupIndex].name,
-               allStorms[dupIndex].startTime)
+#==============================================================================
+#         print ('\n', nDups, 'sets of duplicate storms found! \n',
+#                'Source, Name, Start Date \n',
+#                allSorted[i].source, allSorted[i].name,
+#                allSorted[i].startTime, 'and \n',
+#                allStorms[dupIndex].source,allStorms[dupIndex].name,
+#                allStorms[dupIndex].startTime)
+#==============================================================================
         if use_HURDAT:
              if allSorted[i].source: #This is a HURDAT record so replace old one
                  allStorms[dupIndex] = allSorted[i]
@@ -312,10 +317,12 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
 
     else: # not a duplicate, so copy it to allStorms
         allStorms.append(allSorted[i])
-        if allSorted[i].source:
-            print ("H2[{0}] Only Storm {1} from {2} to {3}".format(
-            allSorted[i].source,allSorted[i].name, 
-            allSorted[i].startTime, allSorted[i].endTime))
+#==============================================================================
+#         if allSorted[i].source:
+#             print ("H2[{0}] Only Storm {1} from {2} to {3}".format(
+#             allSorted[i].source,allSorted[i].name, 
+#             allSorted[i].startTime, allSorted[i].endTime))
+#==============================================================================
             
  
 print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
