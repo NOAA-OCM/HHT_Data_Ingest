@@ -10,6 +10,11 @@ Created 2014-12-11 by David L Eslinger (DLE)
 Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
 
 """
+import shapefile
+
+""" Processing functions """
+def ssscale(nature, wind):
+    pass
 
 """ Declarations and Parameters """
 TESTING = False
@@ -24,10 +29,10 @@ else:
     h2_dataDir = "C:/GIS/Hurricane/HURDAT/"  # Main Data location
     h2AtlRaw = h2_dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
     h2nepacRaw = h2_dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
-    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r06/"  # Main Data location
-    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r06.csv"           # IBTrACS CSC version Data
 #    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r04/"  # Main Data location
-#    ibRaw = ib_dataDir + "Allstorms.ibtracs_wmo.v03r04.csv"           # IBTrACS CSC version Data
+#    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r04.csv" # IBTrACS CSC version Data
+    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r06/"  # Main Data location
+    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r06.csv" # IBTrACS CSC version Data
 
 resultsDir = workDir + "Results/"  #  Location for final data
 
@@ -86,7 +91,7 @@ numStorms = -1
     
 ibNum = 0 # Initialize IBTrACS storm counter, 
           # it will increment when storm end is found
-    
+print ('IBTrACS file: ', ibRaw)    
 with open(ibRaw, "r") as rawObsFile:
      head1 = rawObsFile.readline()
      head2 = rawObsFile.readline()
@@ -281,19 +286,22 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
 #         sameName = ( allSorted[i].name.find(allStorms[j].name)
 #                  + allStorms[j].name.find(allSorted[i].name)  )
 #==============================================================================
-        AsortedName = allSorted[i].name
-        AallName =  allStorms[j].name  
+        AsortedName = allSorted[i].name # make name var for easier debugging 
+        AallName =  allStorms[j].name  # make name var for easier debugging 
         AallInSorted = AsortedName.find(AallName)
         AsortedInAll =  AallName.find(AsortedName)  
-        if AallInSorted + AsortedInAll != -2: #Duplicate names found
+        if AallInSorted + AsortedInAll != -2: # Duplicate names found
             if ( allSorted[i].name.find("NAME") != -1 or 
                  allSorted[i].name.find("KNOWN") != -1 ):
-               pass #may not be duplicates
-            else:
-               nDups += 1
-               isDuplicate = True
-               dupIndex = j
-               break
+                 """ Unnamed storms are common so check for identical
+                     start times.  If different, they are different 
+                     storms so CONTINUE to next j loop """
+                 if allSorted[i].startTime != allStorms[j].startTime:
+                     continue #different start time, not true duplicates
+            nDups += 1
+            isDuplicate = True
+            dupIndex = j
+            break
     
     if isDuplicate:
 #==============================================================================
@@ -331,14 +339,47 @@ print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
         len(allSorted),len(allStorms)), 
         "\nDuplicated storms: {0}, {1}".format(nDups,"" ))#nDup2s))
 
-""" Now process unique storms for QA/QC and finding Safir-Simpson value """
+""" -------------------- All storms are now unique -------------------- """
 
+
+""" Now process unique storms for QA/QC and finding Safir-Simpson value """
+for i, storm in enumerate(allStorms[495:500]):
+#for i, storm in enumerate(allStorms[500]):
+    """loop through segments, skipping last"""
+    for j in range(0,len(storm.segs)-1):
+        print('On ',j,'of',len(storm.segs), 'records')
+        """ For each segment in the storm find: """
+        """ --- ending Lat and Lon for each segment"""
+        storm.segs[j].endLat = storm.segs[j+1].startLat
+        storm.segs[j].endLon = storm.segs[j+1].startLon
+       
+        """ --- Saffir-Simpson value for each segment"""
+        ssscale(None,None)
+        """ --- ENSO stage for each segment by referencing year and
+month against data set at:
+http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt
+For more information on the ENSO index, check out the CPC pages at:
+http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ensoyears.shtml
+http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_change.shtml
+        """
+        # Get latest data from web:
+        pass
+        #Calculate periods if needed
+        pass
+        # Assign ENSO flag
+        pass
             
                 
+stormLines = []
 
 """ For each storm : """
+for i, storm in enumerate(allStorms):
+    line = shapefile.Writer()
+    pass
+
 """     Create segment shapefiles """
 
 """     Create track shapefiles """
 
 """ Write out shapefiles """
+
