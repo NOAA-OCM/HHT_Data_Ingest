@@ -60,59 +60,32 @@ def getCat(nature, wind):
     """
     
     if wind >= 137:
-        if (nature[0] == 'E'):
-            return 'ET_H5'
-        elif (nature[0] == 'S'):
-            return 'SS_5'
-        elif (nature[0] == 'H' or nature == 'TS' or nature == 'NR'):
-            return 'H5'
-        else:
-            print('ERROR in logic, Nature, wind = ',nature,wind)
-            return False
+        catSuffix = 'H5'
     elif wind >= 113:
-        if (nature[0] == 'E'):
-            return 'ET_H4'
-        elif (nature[0] == 'S'):
-            return 'SS_4'
-        elif (nature[0] == 'H' or nature == 'TS' or nature == 'NR'):
-            return 'H4'
-        else:
-            print('ERROR in logic, Nature, wind = ',nature,wind)
-            return False
+        catSuffix = 'H4'
     elif wind >= 96:
-        if (nature[0] == 'E'):
-            return 'ET_H3'
-        elif (nature[0] == 'S'):
-            return 'SS_3'
-        elif (nature[0] == 'H' or nature == 'TS' or nature == 'NR'):
-            return 'H3'
-        else:
-            print('ERROR in logic, Nature, wind = ',nature,wind)
-            return False
+        catSuffix = 'H3'
     elif wind >= 83:
-        if (nature[0] == 'E'):
-            return 'ET_H2'
-        elif (nature[0] == 'S'):
-            return 'SS_2'
-        elif (nature[0] == 'H' or nature == 'TS' or nature == 'NR'):
-            return 'H2'
-        else:
-            print('ERROR in logic, Nature, wind = ',nature,wind)
-            return False
+        catSuffix = 'H2'
     elif wind >= 64:
-        if (nature[0] == 'E'):
-            return 'ET_H1'
-        elif (nature[0] == 'S'):
-            return 'SS_1'
-        elif (nature[0] == 'H' or nature == 'TS' or nature == 'NR'):
-            return 'H1'
-        else:
-            print('ERROR in logic, Nature, wind = ',nature,wind)
-            return False
+        catSuffix = 'H1'
     elif wind >= 34:
-        return 'BAR'
+        catSuffix = 'S' # Storm
+    elif wind >= 20:
+        catSuffix = 'D' # Depression or Disturbance5
     else:
         return "FOO"
+    """ Now figure out what it is """
+    if (nature[0] == 'E'):
+        return 'ET_'+catSuffix
+    elif (nature[0] == 'S'):
+        return 'SS_'+catSuffix
+    elif (nature[0] == 'H' or nature == 'TS' or nature == 'NR'):
+        return catSuffix
+    else:
+        print('ERROR in logic, Nature, wind, suffix = ',nature,wind, catSuffix)
+        return False
+
 """------------------------END OF GetCat--------------------------------"""
 
 
