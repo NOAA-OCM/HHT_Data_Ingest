@@ -13,8 +13,108 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
 import shapefile
 
 """ Processing functions """
-def ssscale(nature, wind):
-    pass
+"""--------------------------------------------------------------------"""
+def getCat(nature, wind):
+    """ This function returns the appropriate classification of 
+    Saffir-Simpson scale or other classification given the reported
+    Nature and 1-minute averaged wind speed in nautical miles/hour (Knots).
+    The logic used in the previous SQL calculations for classification was:
+        DESCRIP_NAME HHT_CODE MIN  MAX  COLOR     LINE      ?   ORIGINAL_NATURE
+        Disturbance	     DS	30	70	black	Solid	4	DB
+        Extratropical	ET	0	0	black	dashed	5	EX
+        Category 1	     H1	64	83	red	     Solid	10	HU
+        Category 2	     H2	83	96	red	     Solid	11	HU
+        Category 3	     H3	96	113	dark red	Solid	12	HU
+        Category 4	     H4	113	137	dark red	Solid	13	HU
+        Category 5	     H5	137	999	dark red	Solid	14	HU
+        Mixed Reports	MX	30	70	gray	     Solid	3	NA or MX
+        Unknown	     N/A	-1	999	gray	     Solid	2	NA
+        N/A	          NR	30	70	blue	     Solid	1	NA
+        Subtrop Depr	SD	0	34	orange	Solid	6	SD
+        Subtrop Storm	SS	34	999	blue	     Solid	7	SS
+        Trop Depression	TD	0	34	green	Solid	8	TD
+        Tropical Storm	TS	34	64	yellow	Solid	9	TS
+        
+    Boundary values and naming conventions used here follow the FAQ from
+    NOAA's Hurricane Research Division:
+            http://www.aoml.noaa.gov/hrd/tcfaq/A5.html
+    and the Saffir-Simpson values as revised by the National Hurricane Center
+    and defined in this document:
+            http://www.nhc.noaa.gov/pdf/sshws_2012rev.pdf
+    
+    NOTE BENE: In addition, we have extended the UPPER boundary defined
+    by the SS Scale up to, but not including, the lower boundary of the 
+    next higher class.  This is necessary because the NHC's Saffir-Simpson 
+    definitions are stricly for integer values of wind speed, which makes
+    sense given the lack of precision at which they can accurately be 
+    measured.  HOWEVER, when converting from units and averaging intervals 
+    from other reporting Centers, there may be convereted 1-minute winds that 
+    fall within the 1 knot "gaps" in the NHC's Saffir-Simpson definations. 
+    In order to classify those wind speeds, we use the use the following
+    logic to assign a storm to some class X:
+        Lower Bound(Class X) <= Converted 1-min Wind < Upper Bound(Class X+1)
+        
+    Questions can be directed to:
+        Dave Eslinger, dave.eslinger@noaa.gov
+        
+    """
+    
+    if wind >= 137:
+        if (nature[0] == 'E'):
+            return 'ET_H5'
+        elif (nature[0] == 'S'):
+            return 'SS_5'
+        elif (nature[0] == 'H' or nature == 'TS' or nature == 'NR'):
+            return 'H5'
+        else:
+            print('ERROR in logic, Nature, wind = ',nature,wind)
+            return False
+    elif wind >= 113:
+        if (nature[0] == 'E'):
+            return 'ET_H4'
+        elif (nature[0] == 'S'):
+            return 'SS_4'
+        elif (nature[0] == 'H' or nature == 'TS' or nature == 'NR'):
+            return 'H4'
+        else:
+            print('ERROR in logic, Nature, wind = ',nature,wind)
+            return False
+    elif wind >= 96:
+        if (nature[0] == 'E'):
+            return 'ET_H3'
+        elif (nature[0] == 'S'):
+            return 'SS_3'
+        elif (nature[0] == 'H' or nature == 'TS' or nature == 'NR'):
+            return 'H3'
+        else:
+            print('ERROR in logic, Nature, wind = ',nature,wind)
+            return False
+    elif wind >= 83:
+        if (nature[0] == 'E'):
+            return 'ET_H2'
+        elif (nature[0] == 'S'):
+            return 'SS_2'
+        elif (nature[0] == 'H' or nature == 'TS' or nature == 'NR'):
+            return 'H2'
+        else:
+            print('ERROR in logic, Nature, wind = ',nature,wind)
+            return False
+    elif wind >= 64:
+        if (nature[0] == 'E'):
+            return 'ET_H1'
+        elif (nature[0] == 'S'):
+            return 'SS_1'
+        elif (nature[0] == 'H' or nature == 'TS' or nature == 'NR'):
+            return 'H1'
+        else:
+            print('ERROR in logic, Nature, wind = ',nature,wind)
+            return False
+    elif wind >= 34:
+        return 'BAR'
+    else:
+        return "FOO"
+"""------------------------END OF GetCat--------------------------------"""
+
 
 """ Declarations and Parameters """
 TESTING = False
@@ -33,6 +133,8 @@ else:
 #    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r04.csv" # IBTrACS CSC version Data
     ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r06/"  # Main Data location
     ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r06.csv" # IBTrACS CSC version Data
+#    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r05/"  # Main Data location
+#    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS CSC version Data
 
 resultsDir = workDir + "Results/"  #  Location for final data
 
@@ -45,10 +147,10 @@ dupRange = 5
 """ Create needed Objects """
 class Storm(object):
     def __init__(self,uid,name):
-        self.uid = uid
-        self.name = name
-        self.maxW = -99
-        self.minP = 999
+        self.uid = uid.strip()
+        self.name = name.strip()
+        self.maxW = -99.
+        self.minP = 999.
         self.numSegs = 0
         self.segs = []
         self.startTime = None
@@ -59,19 +161,19 @@ class Storm(object):
 
 class Observation(object):
     def __init__(self,time,lat,lon,wsp,pres,nature):
-        self.time = time
-        self.startLat = lat
-        self.startLon = lon
-        self.wsp = wsp
-        self.pres = pres
-        self.nature = nature
+        self.time = time.strip()
+        self.startLat = float(lat)
+        self.startLon = float(lon)
+        self.wsp = float(wsp)
+        self.pres = float(pres)
+        self.nature = nature.strip()
 
 class Segment(Observation):
     def __init__(self,time,lat,lon,wsp,pres,nature):
         super().__init__(time,lat,lon,wsp,pres,nature)
         self.endLat = None
         self.endLon = None
-        self.safir = None
+        self.saffir = None
 
 """ Create an empty list to hold allStorms
     and initialize the total storm counter """
@@ -337,24 +439,26 @@ print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
         ibNum, hstormNum[0], hstormNum[1]), "\n ",
         "Total storms = {0}, Unique storms = {1}".format(
         len(allSorted),len(allStorms)), 
-        "\nDuplicated storms: {0}, {1}".format(nDups,"" ))#nDup2s))
+        "\nDuplicated storms: {0}".format(nDups,"" ))#nDup2s))
 
 """ -------------------- All storms are now unique -------------------- """
 
 
 """ Now process unique storms for QA/QC and finding Safir-Simpson value """
-for i, storm in enumerate(allStorms[495:500]):
+for i, storm in enumerate(allStorms[11800:11802]):
 #for i, storm in enumerate(allStorms[500]):
     """loop through segments, skipping last"""
     for j in range(0,len(storm.segs)-1):
-        print('On ',j,'of',len(storm.segs), 'records')
         """ For each segment in the storm find: """
+
         """ --- ending Lat and Lon for each segment"""
         storm.segs[j].endLat = storm.segs[j+1].startLat
         storm.segs[j].endLon = storm.segs[j+1].startLon
        
         """ --- Saffir-Simpson value for each segment"""
-        ssscale(None,None)
+        storm.segs[j].saffir = getCat(storm.segs[j].nature, 
+                                    (storm.segs[j].wsp))
+
         """ --- ENSO stage for each segment by referencing year and
 month against data set at:
 http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt
@@ -368,6 +472,12 @@ http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_change.s
         pass
         # Assign ENSO flag
         pass
+
+        print('On ',j,'of',len(storm.segs), 'records, ',
+              'wind, nature, SS = ',
+              storm.segs[j].wsp,
+              storm.segs[j].nature,
+              storm.segs[j].saffir)
             
                 
 stormLines = []
