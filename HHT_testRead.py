@@ -20,20 +20,20 @@ def getCat(nature, wind):
     Nature and 1-minute averaged wind speed in nautical miles/hour (Knots).
     The logic used in the previous SQL calculations for classification was:
         DESCRIP_NAME HHT_CODE MIN  MAX  COLOR     LINE      ?   ORIGINAL_NATURE
-        Disturbance	     DS	30	70	black	Solid	4	DB
-        Extratropical	ET	0	0	black	dashed	5	EX
+        Disturbance	     DS	30	70	black	     Solid	4	DB
+        Extratropical    ET	0	0	black	     dashed	5	EX
         Category 1	     H1	64	83	red	     Solid	10	HU
         Category 2	     H2	83	96	red	     Solid	11	HU
-        Category 3	     H3	96	113	dark red	Solid	12	HU
-        Category 4	     H4	113	137	dark red	Solid	13	HU
-        Category 5	     H5	137	999	dark red	Solid	14	HU
-        Mixed Reports	MX	30	70	gray	     Solid	3	NA or MX
+        Category 3	     H3	96	113	dark red    Solid	12	HU
+        Category 4	     H4	113	137	dark red    Solid	13	HU
+        Category 5	     H5	137	999	dark red    Solid	14	HU
+        Mixed Reports    MX	30	70	gray	     Solid	3	NA or MX
         Unknown	     N/A	-1	999	gray	     Solid	2	NA
-        N/A	          NR	30	70	blue	     Solid	1	NA
-        Subtrop Depr	SD	0	34	orange	Solid	6	SD
-        Subtrop Storm	SS	34	999	blue	     Solid	7	SS
-        Trop Depression	TD	0	34	green	Solid	8	TD
-        Tropical Storm	TS	34	64	yellow	Solid	9	TS
+        N/A              NR	30	70	blue	     Solid	1	NA
+        Subtrop Depr     SD	0	34	orange	     Solid	6	SD
+        Subtrop Storm    SS	34	999	blue	     Solid	7	SS
+        Trop Depression  TD	0	34	green	     Solid	8	TD
+        Tropical Storm   TS	34	64	yellow	     Solid	9	TS
         
     Boundary values and naming conventions used here follow the FAQ from
     NOAA's Hurricane Research Division:
@@ -72,19 +72,25 @@ def getCat(nature, wind):
     elif wind >= 34:
         catSuffix = 'S' # Storm
     elif wind >= 20:
-        catSuffix = 'D' # Depression or Disturbance5
+        catSuffix = 'D' # Depression or Disturbance
     else:
-        return "FOO"
+        return "NR"
+        
     """ Now figure out what it is """
-    if (nature[0] == 'E'):
-        return 'ET_'+catSuffix
+    if (catSuffix[0] == 'H' and 
+        (nature[0] == 'H' or nature == 'TS' or nature == 'NR')):
+        return catSuffix # It is a Hurricane strength and not extra-tropical
+    elif (nature[0] == 'E'):
+        return 'EX_'+catSuffix
+    elif (nature[0] == 'T'):
+        return 'T'+catSuffix
     elif (nature[0] == 'S'):
-        return 'SS_'+catSuffix
-    elif (nature[0] == 'H' or nature == 'TS' or nature == 'NR'):
-        return catSuffix
+        return 'S'+catSuffix
+    elif (nature[0] == 'D'):
+        return 'DS'
     else:
         print('ERROR in logic, Nature, wind, suffix = ',nature,wind, catSuffix)
-        return False
+        return 'T' + catSuffix
 
 """------------------------END OF GetCat--------------------------------"""
 
@@ -92,19 +98,23 @@ def getCat(nature, wind):
 """ Declarations and Parameters """
 TESTING = False
 workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
-#workDir = "/home/dave/Data/Hurricanes/" # On Zog
+workDir = "/home/dave/Data/Hurricanes/" # On Zog
 if TESTING:  
     dataDir = workDir  # Testing Data location
     h2nepacRaw = workDir + "h2NEPACtail.txt" # HURDAT2 NE North Pacific Data
     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 else:
-    h2_dataDir = "C:/GIS/Hurricane/HURDAT/"  # Main Data location
-    h2AtlRaw = h2_dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
+#    h2_dataDir = "C:/GIS/Hurricane/HURDAT/"  # Main Data location
+    h2_dataDir = workDir  # Main Data location on Zog
+    #h2AtlRaw = h2_dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
+    #h2nepacRaw = h2_dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
+    h2AtlRaw = h2_dataDir + "hurdat2-1851-2013-052714.txt"     # HURDAT2 North Atlantic Data
     h2nepacRaw = h2_dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
 #    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r04/"  # Main Data location
 #    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r04.csv" # IBTrACS CSC version Data
-    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r06/"  # Main Data location
+#    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r06/"  # Main Data location
+    ib_dataDir = workDir  # Main Data location
     ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r06.csv" # IBTrACS CSC version Data
 #    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r05/"  # Main Data location
 #    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS CSC version Data
@@ -419,7 +429,7 @@ print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
 
 """ Now process unique storms for QA/QC and finding Safir-Simpson value """
 for i, storm in enumerate(allStorms[11800:11802]):
-#for i, storm in enumerate(allStorms[500]):
+#for i, storm in enumerate(allStorms[5:10]):
     """loop through segments, skipping last"""
     for j in range(0,len(storm.segs)-1):
         """ For each segment in the storm find: """
