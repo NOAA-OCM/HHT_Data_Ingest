@@ -11,6 +11,39 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
 
 """
 import shapefile
+""" Declarations and Parameters """
+TESTING = True
+workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
+workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
+#workDir = "/home/dave/Data/Hurricanes/" # On Zog
+if TESTING:  
+    dataDir = workDir  # Testing Data location
+    h2nepacRaw = workDir + "h2NEPACtail.txt" # HURDAT2 NE North Pacific Data
+    h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
+    ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
+else:
+#    h2_dataDir = "C:/GIS/Hurricane/HURDAT/"  # Main Data location
+    h2_dataDir = workDir  # Main Data location on Zog
+    #h2AtlRaw = h2_dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
+    #h2nepacRaw = h2_dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
+    h2AtlRaw = h2_dataDir + "hurdat2-1851-2013-052714.txt"     # HURDAT2 North Atlantic Data
+    h2nepacRaw = h2_dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
+#    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r04/"  # Main Data location
+#    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r04.csv" # IBTrACS CSC version Data
+#    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r06/"  # Main Data location
+    ib_dataDir = workDir  # Main Data location
+    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r06.csv" # IBTrACS CSC version Data
+#    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r05/"  # Main Data location
+#    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS CSC version Data
+
+resultsDir = workDir + "Results/"  #  Location for final data
+
+""" Choose to use either HURDAT2 data as the 'base' data layer (a new
+    behaviour) or to use IBTrACS as the 'base' depending on the 
+    use_HURDAT variable: """
+use_HURDAT = False
+dupRange = 5    
+
 
 """ Processing functions """
 """--------------------------------------------------------------------"""
@@ -92,55 +125,40 @@ def getCat(nature, wind):
         print('ERROR in logic, Nature, wind, suffix = ',nature,wind, catSuffix)
         return 'T' + catSuffix
 
-"""------------------------END OF GetCat--------------------------------"""
+"""------------------------END OF getCat-------------------------------"""
+
+"""--------------------------------------------------------------------"""
+""" Get data for ENSO stage for each segment by referencing year and
+month against data set at:
+http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt
+For more information on the ENSO index, check out the CPC pages at:
+http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ensoyears.shtml
+http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_change.shtml
+        """
+def getENSO():
+    # Get latest data from web:
+    pass
+    #Calculate periods if needed
+    pass
+    # return whatever...? Table fo rsome table lookup?
+"""------------------------END OF getENSO-------------------------------"""
 
 
-""" Declarations and Parameters """
-TESTING = False
-workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
-workDir = "/home/dave/Data/Hurricanes/" # On Zog
-if TESTING:  
-    dataDir = workDir  # Testing Data location
-    h2nepacRaw = workDir + "h2NEPACtail.txt" # HURDAT2 NE North Pacific Data
-    h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
-    ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
-else:
-#    h2_dataDir = "C:/GIS/Hurricane/HURDAT/"  # Main Data location
-    h2_dataDir = workDir  # Main Data location on Zog
-    #h2AtlRaw = h2_dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
-    #h2nepacRaw = h2_dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
-    h2AtlRaw = h2_dataDir + "hurdat2-1851-2013-052714.txt"     # HURDAT2 North Atlantic Data
-    h2nepacRaw = h2_dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
-#    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r04/"  # Main Data location
-#    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r04.csv" # IBTrACS CSC version Data
-#    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r06/"  # Main Data location
-    ib_dataDir = workDir  # Main Data location
-    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r06.csv" # IBTrACS CSC version Data
-#    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r05/"  # Main Data location
-#    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS CSC version Data
-
-resultsDir = workDir + "Results/"  #  Location for final data
-
-""" Choose to use either HURDAT2 data as the 'base' data layer (a new
-    behaviour) or to use IBTrACS as the 'base' depending on the 
-    use_HURDAT variable: """
-use_HURDAT = False
-dupRange = 5    
 
 """ Create needed Objects """
 class Storm(object):
     def __init__(self,uid,name):
         self.uid = uid.strip()
         self.name = name.strip()
+        self.startTime = None
+        self.endTime = None
         self.maxW = -99.
         self.minP = 999.
         self.numSegs = 0
-        self.segs = []
-        self.startTime = None
-        self.endTime = None
         self.maxSafir = ""
         self.enso = ""
         self.source = ""  # 0 = IBTrACS, 1 or 2 = HURDAT2 Atl, NEPAC
+        self.segs = []
 
 class Observation(object):
     def __init__(self,time,lat,lon,wsp,pres,nature):
@@ -427,11 +445,15 @@ print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
 """ -------------------- All storms are now unique -------------------- """
 
 
+
+
+
 """ Now process unique storms for QA/QC and finding Safir-Simpson value """
-for i, storm in enumerate(allStorms[11800:11802]):
-#for i, storm in enumerate(allStorms[5:10]):
+#for i, storm in enumerate(allStorms[11700:11802:4]):
+for i, storm in enumerate(allStorms[5:10]):
     """loop through segments, skipping last"""
-    for j in range(0,len(storm.segs)-1):
+    jLast = len(storm.segs)-1
+    for j in range(0,jLast):
         """ For each segment in the storm find: """
 
         """ --- ending Lat and Lon for each segment"""
@@ -442,32 +464,55 @@ for i, storm in enumerate(allStorms[11800:11802]):
         storm.segs[j].saffir = getCat(storm.segs[j].nature, 
                                     (storm.segs[j].wsp))
 
-        """ --- ENSO stage for each segment by referencing year and
-month against data set at:
-http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt
-For more information on the ENSO index, check out the CPC pages at:
-http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ensoyears.shtml
-http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_change.shtml
-        """
-        # Get latest data from web:
-        pass
-        #Calculate periods if needed
-        pass
-        # Assign ENSO flag
-        pass
+        """ Get data for ENSO stage for each segment by start time """
+        pass           
+ 
+#==============================================================================
+#         print('On ',j,'of',len(storm.segs), 'records, ',
+#               'wind, nature, SS = ',
+#               storm.segs[j].wsp,
+#               storm.segs[j].nature,
+#               storm.segs[j].saffir)
+#==============================================================================
 
-        print('On ',j,'of',len(storm.segs), 'records, ',
-              'wind, nature, SS = ',
-              storm.segs[j].wsp,
-              storm.segs[j].nature,
-              storm.segs[j].saffir)
-            
+    """ Now need to process the very last segment """ 
+    """ --- ending Lat and Lon for each segment is just the same
+    starting location, but offset by 0.01 degrees.  
+    This allows for the creation of a valid attributed line for every
+    actual observation."""   
+    storm.segs[jLast].endLat = (storm.segs[jLast].startLat + 0.01)
+    storm.segs[jLast].endLon = storm.segs[jLast].startLon + 0.01
+   
+    """ --- Saffir-Simpson value for each segment"""
+    storm.segs[jLast].saffir = getCat(storm.segs[jLast].nature, 
+                                (storm.segs[jLast].wsp))
+   # Assign ENSO flag
+    pass
                 
-stormLines = []
+stormTracks = []
+stormFields = ['UID','Name','Date','MaxWind','MinPress','NumObs',
+               'MaxSaffir','ENSO']
 
 """ For each storm : """
-for i, storm in enumerate(allStorms):
-    line = shapefile.Writer()
+for i, storm in enumerate(allStorms[5:10]):
+    lineCoords = []
+    track = shapefile.Writer(shapefile.POLYLINE) # New shapefile
+""" FIX THIS     track.field(eachField) """
+    with storm: 
+        for segment in storm.segs:
+            lineCoords.append([[segment.startLon, segment.startLat],
+                              [segment.endLon, segment.endLat]])
+            #track.record(storm.)
+#==============================================================================
+#     print(lineCoords)
+#     foo = input(" any key to continue")
+#==============================================================================
+    track.poly(shapeType=3, parts = lineCoords )
+    track.autoBalance = 1 # make sure all shapes have records
+    
+    
+    track.save(resultsDir+storm.name+storm.startTime[:4])
+    
     pass
 
 """     Create segment shapefiles """
