@@ -12,7 +12,7 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
 """
 import shapefile
 """ Declarations and Parameters """
-TESTING = True
+TESTING = False
 #workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
 workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 #workDir = "/home/dave/Data/Hurricanes/" # On Zog
@@ -122,7 +122,7 @@ def getCat(nature, wind):
     elif (nature[0] == 'D'):
         return 'DS'
     else:
-        print('ERROR in logic, Nature, wind, suffix = ',nature,wind, catSuffix)
+        #print('ERROR in logic, Nature, wind, suffix = ',nature,wind, catSuffix)
         return 'T' + catSuffix
 
 """------------------------END OF getCat-------------------------------"""
@@ -357,8 +357,6 @@ allSorted = sorted(allStorms, key = lambda storm: storm.startTime)
 #==============================================================================
 # for storm in allStorms:
 #     print("Name, Time = ", storm.name, storm.segs[0].time)
-#==============================================================================
-#==============================================================================
 # for storm in allSorted:
 #     if storm.startTime.find('2013') > -1:
 #         print("SORTED: Source, UID, Name, Time, source = ", 
@@ -446,9 +444,11 @@ print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
 
 """ Now process unique storms for QA/QC and finding Saffir-Simpson value """
 #for i, storm in enumerate(allStorms[11700:11802:4]):
-for i, storm in enumerate(allStorms[5:10]):
+#for i, storm in enumerate(allStorms[5:10]):
+for i, storm in enumerate(allStorms):
     """loop through segments, skipping last"""
-    jLast = len(storm.segs)-1
+    storm.numSegs = len(storm.segs)
+    jLast = storm.numSegs-1
     for j in range(0,jLast):
         """ For each segment in the storm find: """
 
@@ -462,7 +462,12 @@ for i, storm in enumerate(allStorms[5:10]):
 
         """ Get data for ENSO stage for each segment by start time """
         pass           
- 
+        """ Find Max Winds and Saffir-Simpson and Min Pressures """
+        if storm.segs[j].wsp > storm.maxW: # New Max found so update MaxW and SS
+            storm.maxW = storm.segs[j].wsp
+            storm.maxSaffir = storm.segs[j].saffir
+        if storm.segs[j].pres < storm.minP:
+            storm.minP = storm.segs[j].pres
 #==============================================================================
 #         print('On ',j,'of',len(storm.segs), 'records, ',
 #               'wind, nature, SS = ',
@@ -482,7 +487,13 @@ for i, storm in enumerate(allStorms[5:10]):
     """ --- Saffir-Simpson value for each segment"""
     storm.segs[jLast].saffir = getCat(storm.segs[jLast].nature, 
                                 (storm.segs[jLast].wsp))
-   # Assign ENSO flag
+    """ Find Max Winds and Saffir-Simpson and Min Pressures """
+    if storm.segs[jLast].wsp > storm.maxW: # New Max found so update MaxW and SS
+        storm.maxW = storm.segs[jLast].wsp
+        storm.maxSaffir = storm.segs[jLast].saffir
+    if storm.segs[jLast].pres < storm.minP:
+        storm.minP = storm.segs[jLast].pres
+  # Assign ENSO flag
     pass
 
 stormTracks = shapefile.Writer(shapefile.POLYLINE) #One line & record per storm
@@ -497,7 +508,7 @@ for attribute in stormFields:
 segmentFields = ['UID','Name','Date','Wind','Press',
                'Nature','SS_Scale']
 
-for i, storm in enumerate(allStorms[5:10]):
+for i, storm in enumerate(allStorms):
     """ Create new single strom shapefile with each segment as a record
         One shapefile/storm """
     oneStorm = shapefile.Writer(shapefile.POLYLINE) # New shapefile
@@ -528,7 +539,9 @@ for i, storm in enumerate(allStorms[5:10]):
                  storm.maxW,storm.minP,storm.numSegs,
                  storm.maxSaffir,storm.enso)
     """ Save single storm shapefile """
-    oneStorm.save(resultsDir+storm.name+storm.startTime[:4])
+    thisName = resultsDir+storm.name.replace(":","_")+"_"+storm.startTime[:4]
+    #this
+    oneStorm.save(thisName)
 
     
     
