@@ -13,7 +13,7 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
 import shapefile
 """ Declarations and Parameters """
 TESTING = True
-workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
+#workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
 workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 #workDir = "/home/dave/Data/Hurricanes/" # On Zog
 if TESTING:  
@@ -155,7 +155,7 @@ class Storm(object):
         self.maxW = -99.
         self.minP = 999.
         self.numSegs = 0
-        self.maxSafir = ""
+        self.maxSaffir = ""
         self.enso = ""
         self.source = ""  # 0 = IBTrACS, 1 or 2 = HURDAT2 Atl, NEPAC
         self.segs = []
@@ -320,9 +320,9 @@ for i, file in enumerate(hFiles):
                 otime = vals[0][0:4] +"-"+vals[0][4:6]+"-"+vals[0][6:] + " "
                 otime += vals[1][:2] + ":" + vals[1][2:] + ":00"
 
-                lon = (float(vals[4][:4]) if vals[4][4] == "N" 
+                lat = (float(vals[4][:4]) if vals[4][4] == "N" 
                          else -1. * float(vals[4][:4]))
-                lat = (float(vals[5][:5]) if vals[5][5] == "E" 
+                lon = (float(vals[5][:5]) if vals[5][5] == "E" 
                         else -1. * float(vals[5][:5]))
                 #print(otime, lon, lat)
                 observation = Segment(otime,     # ISO 8601 Time
@@ -444,11 +444,7 @@ print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
 
 """ -------------------- All storms are now unique -------------------- """
 
-
-
-
-
-""" Now process unique storms for QA/QC and finding Safir-Simpson value """
+""" Now process unique storms for QA/QC and finding Saffir-Simpson value """
 #for i, storm in enumerate(allStorms[11700:11802:4]):
 for i, storm in enumerate(allStorms[5:10]):
     """loop through segments, skipping last"""
@@ -488,36 +484,56 @@ for i, storm in enumerate(allStorms[5:10]):
                                 (storm.segs[jLast].wsp))
    # Assign ENSO flag
     pass
-                
-stormTracks = []
+
+stormTracks = shapefile.Writer(shapefile.POLYLINE) #One line & record per storm
+stormTracks.autobalance = 1 # make sure all shapes have records
 stormFields = ['UID','Name','Date','MaxWind','MinPress','NumObs',
                'MaxSaffir','ENSO']
+for attribute in stormFields:
+    stormTracks.field(attribute) # Add Fields
+     
 
 """ For each storm : """
+segmentFields = ['UID','Name','Date','Wind','Press',
+               'Nature','SS_Scale']
+
 for i, storm in enumerate(allStorms[5:10]):
-    lineCoords = []
-    track = shapefile.Writer(shapefile.POLYLINE) # New shapefile
-""" FIX THIS     track.field(eachField) """
-    with storm: 
-        for segment in storm.segs:
-            lineCoords.append([[segment.startLon, segment.startLat],
-                              [segment.endLon, segment.endLat]])
-            #track.record(storm.)
+    """ Create new single strom shapefile with each segment as a record
+        One shapefile/storm """
+    oneStorm = shapefile.Writer(shapefile.POLYLINE) # New shapefile
+    oneStorm.autoBalance = 1 # make sure all shapes have records
+    for attribute in segmentFields: # Add Fields for track shapefile
+        oneStorm.field(attribute) 
+        
+    lineCoords = [] # Create list for stormTracks shapefile
+        
+    for thisSegment in storm.segs:
+        """ Add coordinates to the Track shapefile list """
+        lineCoords.append([[thisSegment.startLon, thisSegment.startLat],
+                              [thisSegment.endLon, thisSegment.endLat]])
+        """ Add this segment to the segments shapefile """
+        oneStorm.poly(parts = [[[thisSegment.startLon, thisSegment.startLat],
+                              [thisSegment.endLon, thisSegment.endLat]]])
+        oneStorm.record(storm.uid,storm.name,
+                        thisSegment.time,thisSegment.wsp,
+                        thisSegment.pres,thisSegment.nature,
+                        thisSegment.saffir)
 #==============================================================================
 #     print(lineCoords)
 #     foo = input(" any key to continue")
 #==============================================================================
-    track.poly(shapeType=3, parts = lineCoords )
-    track.autoBalance = 1 # make sure all shapes have records
+    """ Append track to stormTracks list """
+    stormTracks.poly(shapeType=3, parts = lineCoords ) # Add the shape
+    stormTracks.record(storm.uid,storm.name,storm.startTime, #Add it's attributes
+                 storm.maxW,storm.minP,storm.numSegs,
+                 storm.maxSaffir,storm.enso)
+    """ Save single storm shapefile """
+    oneStorm.save(resultsDir+storm.name+storm.startTime[:4])
+
     
     
-    track.save(resultsDir+storm.name+storm.startTime[:4])
-    
-    pass
 
-"""     Create segment shapefiles """
-
-"""     Create track shapefiles """
-
+#stormTracks.append(track)
 """ Write out shapefiles """
+stormTracks.save(resultsDir+'AllStorms')
 
