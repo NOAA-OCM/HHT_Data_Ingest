@@ -14,7 +14,8 @@ import shapefile
 """ Declarations and Parameters """
 TESTING = False
 #workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
-workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
+#workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
+workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
 #workDir = "/home/dave/Data/Hurricanes/" # On Zog
 if TESTING:  
     dataDir = workDir  # Testing Data location
@@ -36,7 +37,7 @@ else:
 #    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r05/"  # Main Data location
 #    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS CSC version Data
 
-resultsDir = workDir + "Results/"  #  Location for final data
+resultsDir = workDir + "Results2/"  #  Location for final data
 
 """ Choose to use either HURDAT2 data as the 'base' data layer (a new
     behaviour) or to use IBTrACS as the 'base' depending on the 
