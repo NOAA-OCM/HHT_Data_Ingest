@@ -10,9 +10,10 @@ Created 2014-12-11 by David L Eslinger (DLE)
 Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
 
 """
+import math
 import shapefile
 """ Declarations and Parameters """
-TESTING = False
+TESTING = True
 #workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
 #workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
@@ -22,6 +23,7 @@ if TESTING:
     h2nepacRaw = workDir + "h2NEPACtail.txt" # HURDAT2 NE North Pacific Data
     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
+    resultsDir = workDir + "Res_T2/"  #  Location for final data
 else:
 #    h2_dataDir = "C:/GIS/Hurricane/HURDAT/"  # Main Data location
     h2_dataDir = workDir  # Main Data location on Zog
@@ -29,21 +31,22 @@ else:
     #h2nepacRaw = h2_dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
     h2AtlRaw = h2_dataDir + "hurdat2-1851-2013-052714.txt"     # HURDAT2 North Atlantic Data
     h2nepacRaw = h2_dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
-#    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r04/"  # Main Data location
-#    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r04.csv" # IBTrACS CSC version Data
-#    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r06/"  # Main Data location
     ib_dataDir = workDir  # Main Data location
-    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r06.csv" # IBTrACS CSC version Data
-#    ib_dataDir = "C:/GIS/Hurricane/IBTrACS/v03r05/"  # Main Data location
-#    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS CSC version Data
+#    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r06.csv" # IBTrACS ALL v03R06
+    ibRaw = ib_dataDir + "Allstorms.ibtracs_csc.v03r06.csv" # IBTrACS CSC v03R06
+#    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS ALL V03R05
 
-resultsDir = workDir + "Results2/"  #  Location for final data
+    resultsDir = workDir + "Results_NewProj/"  #  Location for final data
 
 """ Choose to use either HURDAT2 data as the 'base' data layer (a new
     behaviour) or to use IBTrACS as the 'base' depending on the 
     use_HURDAT variable: """
 use_HURDAT = False
-dupRange = 5    
+dupRange = 5  
+
+""" Define WGS84 Geographic Projection string """
+epsg = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
+  
 
 
 """ Processing functions """
@@ -173,8 +176,8 @@ class Observation(object):
 class Segment(Observation):
     def __init__(self,time,lat,lon,wsp,pres,nature):
         super().__init__(time,lat,lon,wsp,pres,nature)
-        self.endLat = None
-        self.endLon = None
+        self.endLat = float(0.)
+        self.endLon = float(0.)
         self.saffir = None
 
 """ Create an empty list to hold allStorms
@@ -280,6 +283,7 @@ with open(ibRaw, "r") as rawObsFile:
     is not in the IBTRaCS data  """    
 
 hFiles = [h2AtlRaw, h2nepacRaw]
+#hFiles = []
 hstormNum = [0,0]
 #hFiles = [h2AtlRaw]
 for i, file in enumerate(hFiles):
@@ -455,6 +459,13 @@ for i, storm in enumerate(allStorms):
 
         """ --- ending Lat and Lon for each segment"""
         storm.segs[j].endLat = storm.segs[j+1].startLat
+        """ Make sure LONGITUDE do not change sign across the +-180 line"""
+        if abs(storm.segs[j].startLon - storm.segs[j+1].startLon) > 270.:
+            """ Lon crosses 180, so adjust all following
+            startLons so it does not """
+            storm.segs[j+1].startLon = (
+                math.copysign(360.0,storm.segs[j].startLon)
+                + storm.segs[j+1].startLon)
         storm.segs[j].endLon = storm.segs[j+1].startLon
        
         """ --- Saffir-Simpson value for each segment"""
@@ -507,10 +518,11 @@ for attribute in stormFields:
 
 """ For each storm : """
 segmentFields = ['UID','Name','Date','Wind','Press',
-               'Nature','SS_Scale']
+                 'Nature','SS_Scale',
+                 'StartLon','StartLat','EndLon','EndLat']
 
 for i, storm in enumerate(allStorms):
-    """ Create new single strom shapefile with each segment as a record
+    """ Create new single storm shapefile with each segment as a record
         One shapefile/storm """
     oneStorm = shapefile.Writer(shapefile.POLYLINE) # New shapefile
     oneStorm.autoBalance = 1 # make sure all shapes have records
@@ -529,7 +541,11 @@ for i, storm in enumerate(allStorms):
         oneStorm.record(storm.uid,storm.name,
                         thisSegment.time,thisSegment.wsp,
                         thisSegment.pres,thisSegment.nature,
-                        thisSegment.saffir)
+                        thisSegment.saffir,
+                        thisSegment.startLon,thisSegment.startLat,
+                        thisSegment.endLon,thisSegment.endLat,
+                        )
+
 #==============================================================================
 #     print(lineCoords)
 #     foo = input(" any key to continue")
@@ -543,11 +559,18 @@ for i, storm in enumerate(allStorms):
     thisName = resultsDir+storm.name.replace(":","_")+"_"+storm.startTime[:4]
     #this
     oneStorm.save(thisName)
-
+    # create the PRJ file
+    prj = open("%s.prj" % thisName, "w")
+    prj.write(epsg)
+    prj.close()
     
     
 
 #stormTracks.append(track)
 """ Write out shapefiles """
-stormTracks.save(resultsDir+'AllStorms')
-
+allStormFileName = resultsDir+'AllStorms'
+stormTracks.save(allStormFileName)
+# create the PRJ file
+prj = open("%s.prj" % allStormFileName, "w")
+prj.write(epsg)
+prj.close()
