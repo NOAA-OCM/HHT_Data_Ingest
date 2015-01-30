@@ -1,16 +1,32 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jan 26 14:12:10 2015
+Created on Mon Jan 26-30 2015
 
 @author: Dave.Eslinger
+         dave.eslinger@noaa.gov
+         
+The goal of this program was to work out how toaccess the raw data for 
+Climate Prediction Center Oceanic Nino Index (ONI) directly from their
+online data location. Then we can process the anomolies to produce
+ONI values.  
+
+This process will be used in the HHT preprocessing program
+to create a dictionary to tag each segment with it's ENSO state.
+
 """
-import requests
 
 """ This bit will get the raw text data from the CPO data site """
 ensoURL = 'http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt'
 print (ensoURL)
-r = requests.get(ensoURL)
-lines = r.text.split("\n")
+#import requests  # This approach seems to not be supported quite as widely
+#r = requests.get(ensoURL)
+#lines = r.text.split("\n")
+#lines = r.text.split("\n")
+
+import urllib.request # Works on more systems at the moment
+with urllib.request.urlopen(ensoURL) as r:
+    allLines = str(r.read())
+lines = allLines.split("\\n") #Reuires teh escape char to be escaped for some reason
 numLines = len(lines)
 print("\n",numLines,"lines in initial data file.  First header line and\n",
       "any empty lines at end will be dropped")
@@ -19,13 +35,13 @@ vals=[]
 
 for k in range(1,numLines): # start at 1 to skip header row
     foo = lines[k].split()
-    if len(foo) > 0:
+    if len(foo) > 1: # There can be a single quote in the last line
         isoYRMON = "%s-%02i" % ((foo[0]),int(foo[1]))
         vals.append([isoYRMON,float(foo[4])])
 numRows = len(vals)
 enso = [0]*numRows # Initialize ENSO state to Neutral flag
-print("\n Data record length is ",len(enso),"\n") 
-print(vals[0][:3],vals[numRows-3:])
+#print("\n Data record length is ",len(enso),"\n") 
+#print(vals[0:3],vals[numRows-3:])
     
 """Now that all data are read in, calculate 3 month 
 running averages """
@@ -50,11 +66,7 @@ for k in range(1,numRows-1): #skip first and last fields
         rawENSOState[k] = (-1)
     elif ave3Mon[k] >= 0.5:
         rawENSOState[k] = (1)
-#    print(k,vals[k],ave3Mon[k], rawENSOState[k])
-#==============================================================================
-#     else:
-#         rawENSOState[k] = (0)
-#==============================================================================
+
 """ Now do the last element, averaging it and the second to last element: """
 k = numRows-1
 ave3Mon[k] = (vals[k-1][1]+vals[k][1])/2
@@ -64,8 +76,15 @@ if ave3Mon[k] <= -0.5:
 elif ave3Mon[k] >= 0.5:
     rawENSOState[k] = (1)
         
-#print(k,vals[k],ave3Mon[k], rawENSOState[k])
-
+"""  Calculate the actual ENSO flag: 
+        1 = El Nino, 
+        0 = Neutral, 
+       -1 = La Nina 
+       
+     The logic is that if the centered, running sum for any month 
+     is +5 or -5, then all 5 of those summed months were in a non-neutral
+     ENSO state. They are flagged appropriately.  Unflagged vlaues retain
+     their initialized Neutral (0) flag. """
 testStat = [0]*numRows
 for l in range(2,numRows-3):
     testStat[l] = sum(rawENSOState[(l-2):(l+3)])
@@ -75,10 +94,13 @@ for l in range(2,numRows-3):
          enso[l-2:l+3] = [-1]*5
 #    print(l,vals[l],rawENSOState[l],testStat,"from:",
 #          rawENSOState[(l-2):(l+3)],enso[l])
-
+         
+""" Print the first and last records for comparison w/ CPO web site """
 for k in range(0,50): 
-   print("Finals:",k,vals[k],"%0.1f"%(ave3Mon[k]),rawENSOState[k],testStat[k],enso[k])
+   print("Finals:",k,vals[k],"%0.1f"%(ave3Mon[k]),
+         rawENSOState[k],testStat[k],enso[k])
 for k in range(700,numRows): 
-   print("Finals:",k,vals[k],"%0.1f"%(ave3Mon[k]),rawENSOState[k],testStat[k],enso[k])
+   print("Finals:",k,vals[k],"%0.1f"%(ave3Mon[k]),
+         rawENSOState[k],testStat[k],enso[k])
 
 
