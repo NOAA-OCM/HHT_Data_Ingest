@@ -12,18 +12,24 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
 """
 import math
 import shapefile
+import ensoDownload
 """ Declarations and Parameters """
 TESTING = True
 #workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
-#workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
+workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
 #workDir = "/home/dave/Data/Hurricanes/" # On Zog
 if TESTING:  
     dataDir = workDir  # Testing Data location
-    h2nepacRaw = workDir + "h2NEPACtail.txt" # HURDAT2 NE North Pacific Data
-    h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
-    ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
-    resultsDir = workDir + "Res_T2/"  #  Location for final data
+    h2nepacRaw = workDir + "h2nmid.txt" # HURDAT2 NE North Pacific Data
+    h2AtlRaw = workDir + "h2mid.txt"     # HURDAT2 North Atlantic Data
+    ibRaw = workDir + "midAllcsc.csv"           # IBTrACS CSC version Data
+#==============================================================================
+#     h2nepacRaw = workDir + "h2NEPACtail.txt" # HURDAT2 NE North Pacific Data
+#     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
+#     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
+#==============================================================================
+    resultsDir = workDir + "Res_T0/"  #  Location for final data
 else:
 #    h2_dataDir = "C:/GIS/Hurricane/HURDAT/"  # Main Data location
     h2_dataDir = workDir  # Main Data location on Zog
@@ -43,12 +49,31 @@ else:
     use_HURDAT variable: """
 use_HURDAT = False
 dupRange = 5  
+"""--------------------------------------------------------------------"""
 
 """ Define WGS84 Geographic Projection string """
 epsg = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
+"""--------------------------------------------------------------------"""
   
+""" Get data for ENSO stage for each segment by referencing year and
+ month against data set at:
+ http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt
+ For more information on the ENSO index, check out the CPC pages at:
+ http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ensoyears.shtml
+ http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_change.shtml
+         """
+""" Get dictionary of ENSO state by YYYY-MM key """
+ensoLookup = {}
+ensoLookup = ensoDownload.ensoDict()
 
-
+checkYears = ['2009','2010', '2011','2012']
+checkMonths = ['01','02','03','04','05','06','07','08','09','10','11','12']
+print(' Month: %s' % (checkMonths),end='')
+for year in checkYears:
+    print('\n  %s:' % (year),end='')
+    for month in checkMonths:
+        print(' %4s ' % (ensoLookup[year+'-'+month]),end='')
+print('\n\n')
 """ Processing functions """
 """--------------------------------------------------------------------"""
 def getCat(nature, wind):
@@ -128,26 +153,7 @@ def getCat(nature, wind):
     else:
         #print('ERROR in logic, Nature, wind, suffix = ',nature,wind, catSuffix)
         return 'T' + catSuffix
-
 """------------------------END OF getCat-------------------------------"""
-
-"""--------------------------------------------------------------------"""
-""" Get data for ENSO stage for each segment by referencing year and
-month against data set at:
-http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt
-For more information on the ENSO index, check out the CPC pages at:
-http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ensoyears.shtml
-http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_change.shtml
-        """
-def getENSO():
-    # Get latest data from web:
-    pass
-    #Calculate periods if needed
-    pass
-    # return whatever...? Table fo rsome table lookup?
-"""------------------------END OF getENSO-------------------------------"""
-
-
 
 """ Create needed Objects """
 class Storm(object):
@@ -179,6 +185,7 @@ class Segment(Observation):
         self.endLat = float(0.)
         self.endLon = float(0.)
         self.saffir = None
+        self.enso = None
 
 """ Create an empty list to hold allStorms
     and initialize the total storm counter """
@@ -449,8 +456,8 @@ print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
 
 """ Now process unique storms for QA/QC and finding Saffir-Simpson value """
 #for i, storm in enumerate(allStorms[11700:11802:4]):
-#for i, storm in enumerate(allStorms[5:10]):
-for i, storm in enumerate(allStorms):
+for i, storm in enumerate(allStorms[1:3]):
+#for i, storm in enumerate(allStorms):
     """loop through segments, skipping last"""
     storm.numSegs = len(storm.segs)
     jLast = storm.numSegs-1
@@ -473,7 +480,13 @@ for i, storm in enumerate(allStorms):
                                     (storm.segs[j].wsp))
 
         """ Get data for ENSO stage for each segment by start time """
-        pass           
+        #thisKey = storm.segs[j].time[:7]
+        #print(thisKey, ensoLookup.get(thisKey))
+        #storm.segs[j].enso = ensoLookup[storm.segs[j].time[:7]] 
+#==============================================================================
+#         storm.segs[j].enso = ensoLookup.get(thisKey) 
+#==============================================================================
+        #print(thisKey, ensoLookup.get(thisKey),storm.segs[j].enso)          
         """ Find Max Winds and Saffir-Simpson and Min Pressures """
         if storm.segs[j].wsp > storm.maxW: # New Max found so update MaxW and SS
             storm.maxW = storm.segs[j].wsp
@@ -505,8 +518,10 @@ for i, storm in enumerate(allStorms):
         storm.maxSaffir = storm.segs[jLast].saffir
     if storm.segs[jLast].pres < storm.minP:
         storm.minP = storm.segs[jLast].pres
-  # Assign ENSO flag
-    pass
+    """ Get data for ENSO stage for each segment by start time """
+#==============================================================================
+#     storm.segs[jLast].enso = ensoLookup[storm.segs[jLast].time[:7]]           
+#==============================================================================
 
 stormTracks = shapefile.Writer(shapefile.POLYLINE) #One line & record per storm
 stormTracks.autobalance = 1 # make sure all shapes have records
@@ -518,7 +533,7 @@ for attribute in stormFields:
 
 """ For each storm : """
 segmentFields = ['UID','Name','Date','Wind','Press',
-                 'Nature','SS_Scale',
+                 'Nature','SS_Scale','ENSO',
                  'StartLon','StartLat','EndLon','EndLat']
 
 for i, storm in enumerate(allStorms):
@@ -542,6 +557,7 @@ for i, storm in enumerate(allStorms):
                         thisSegment.time,thisSegment.wsp,
                         thisSegment.pres,thisSegment.nature,
                         thisSegment.saffir,
+                        thisSegment.enso,
                         thisSegment.startLon,thisSegment.startLat,
                         thisSegment.endLon,thisSegment.endLat,
                         )
@@ -550,6 +566,8 @@ for i, storm in enumerate(allStorms):
 #     print(lineCoords)
 #     foo = input(" any key to continue")
 #==============================================================================
+    """ Find ENSO state for start of the storm """
+    storm.enso = ensoLookup.get(storm.segs[0].time[:7])
     """ Append track to stormTracks list """
     stormTracks.poly(shapeType=3, parts = lineCoords ) # Add the shape
     stormTracks.record(storm.uid,storm.name,storm.startTime, #Add it's attributes
@@ -562,9 +580,7 @@ for i, storm in enumerate(allStorms):
     # create the PRJ file
     prj = open("%s.prj" % thisName, "w")
     prj.write(epsg)
-    prj.close()
-    
-    
+    prj.close()   
 
 #stormTracks.append(track)
 """ Write out shapefiles """
