@@ -60,8 +60,10 @@ elif ave3Mon[k] >= 0.5:
         
 """ Do all the "internal" records """
 for k in range(1,numRows-1): #skip first and last fields
-    ave3Mon[k] = round(((vals[k-1][1]+vals[k][1]+vals[k+1][1])/3),1)
-#    print(k,"%00.1f" % (ave3Mon[k]))
+    ave3Mon[k] = round(((vals[k-1][1]+vals[k][1]+vals[k+1][1])/3.0),3)
+    print(k,"%00.3f AVE OF %0.3f, %0.3F, %0.3F" % (ave3Mon[k],
+              vals[k-1][1],vals[k][1],vals[k+1][1]), 
+            " on ",vals[k][0])
     if ave3Mon[k] <= -0.5:
         rawENSOState[k] = (-1)
     elif ave3Mon[k] >= 0.5:
@@ -97,10 +99,10 @@ for l in range(2,numRows-3):
          
 """ Print the first and last records for comparison w/ CPO web site """
 for k in range(0,50): 
-   print("Finals:",k,vals[k],"%0.1f"%(ave3Mon[k]),
+   print("Finals:",k,vals[k],"%0.3f"%(ave3Mon[k]),
          rawENSOState[k],testStat[k],enso[k])
 for k in range(700,numRows): 
-   print("Finals:",k,vals[k],"%0.1f"%(ave3Mon[k]),
+   print("Finals:",k,vals[k],"%0.3f"%(ave3Mon[k]),
          rawENSOState[k],testStat[k],enso[k])
 
 

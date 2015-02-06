@@ -29,7 +29,7 @@ if TESTING:
 #     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-    resultsDir = workDir + "Res_T0/"  #  Location for final data
+    resultsDir = workDir + "Res_T3/"  #  Location for final data
 else:
 #    h2_dataDir = "C:/GIS/Hurricane/HURDAT/"  # Main Data location
     h2_dataDir = workDir  # Main Data location on Zog
@@ -42,7 +42,7 @@ else:
     ibRaw = ib_dataDir + "Allstorms.ibtracs_csc.v03r06.csv" # IBTrACS CSC v03R06
 #    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS ALL V03R05
 
-    resultsDir = workDir + "Results_NewProj/"  #  Location for final data
+    resultsDir = workDir + "Res_00/"  #  Location for final data
 
 """ Choose to use either HURDAT2 data as the 'base' data layer (a new
     behaviour) or to use IBTrACS as the 'base' depending on the 
@@ -456,8 +456,8 @@ print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
 
 """ Now process unique storms for QA/QC and finding Saffir-Simpson value """
 #for i, storm in enumerate(allStorms[11700:11802:4]):
-for i, storm in enumerate(allStorms[1:3]):
-#for i, storm in enumerate(allStorms):
+#for i, storm in enumerate(allStorms[1:3]):
+for i, storm in enumerate(allStorms):
     """loop through segments, skipping last"""
     storm.numSegs = len(storm.segs)
     jLast = storm.numSegs-1
@@ -474,18 +474,15 @@ for i, storm in enumerate(allStorms[1:3]):
                 math.copysign(360.0,storm.segs[j].startLon)
                 + storm.segs[j+1].startLon)
         storm.segs[j].endLon = storm.segs[j+1].startLon
-       
         """ --- Saffir-Simpson value for each segment"""
         storm.segs[j].saffir = getCat(storm.segs[j].nature, 
                                     (storm.segs[j].wsp))
 
         """ Get data for ENSO stage for each segment by start time """
-        #thisKey = storm.segs[j].time[:7]
+        thisKey = storm.segs[j].time[:7]
         #print(thisKey, ensoLookup.get(thisKey))
         #storm.segs[j].enso = ensoLookup[storm.segs[j].time[:7]] 
-#==============================================================================
-#         storm.segs[j].enso = ensoLookup.get(thisKey) 
-#==============================================================================
+        storm.segs[j].enso = ensoLookup.get(thisKey) 
         #print(thisKey, ensoLookup.get(thisKey),storm.segs[j].enso)          
         """ Find Max Winds and Saffir-Simpson and Min Pressures """
         if storm.segs[j].wsp > storm.maxW: # New Max found so update MaxW and SS
@@ -506,8 +503,8 @@ for i, storm in enumerate(allStorms[1:3]):
     starting location, but offset by 0.01 degrees.  
     This allows for the creation of a valid attributed line for every
     actual observation."""   
-    storm.segs[jLast].endLat = (storm.segs[jLast].startLat + 0.01)
-    storm.segs[jLast].endLon = storm.segs[jLast].startLon + 0.01
+    storm.segs[jLast].endLat = float(storm.segs[jLast].startLat + 0.01)
+    storm.segs[jLast].endLon = float(storm.segs[jLast].startLon + 0.01)
    
     """ --- Saffir-Simpson value for each segment"""
     storm.segs[jLast].saffir = getCat(storm.segs[jLast].nature, 
