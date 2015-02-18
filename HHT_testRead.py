@@ -14,7 +14,7 @@ import math
 import shapefile
 import ensoDownload
 """ Declarations and Parameters """
-TESTING = True
+TESTING = False
 #workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
 workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
@@ -29,7 +29,7 @@ if TESTING:
 #     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-    resultsDir = workDir + "Res_T3/"  #  Location for final data
+    resultsDir = workDir + "Res_T6/"  #  Location for final data
 else:
 #    h2_dataDir = "C:/GIS/Hurricane/HURDAT/"  # Main Data location
     h2_dataDir = workDir  # Main Data location on Zog
@@ -163,7 +163,7 @@ class Storm(object):
         self.startTime = None
         self.endTime = None
         self.maxW = -99.
-        self.minP = 999.
+        self.minP = 9999.
         self.numSegs = 0
         self.maxSaffir = ""
         self.enso = ""
@@ -225,6 +225,7 @@ with open(ibRaw, "r") as rawObsFile:
                            vals[7] ) # Nature
      thisStorm.segs.append(observation)
      thisStorm.startTime = observation.time
+     thisStorm.name = thisStorm.name +" "+ thisStorm.startTime[:4]
      # enter end time in case this is only observation.
      thisStorm.endTime = observation.time 
      nseg = 1
@@ -269,6 +270,7 @@ with open(ibRaw, "r") as rawObsFile:
                  thisStorm.segs.append(observation)
                  thisStorm.startTime = observation.time
                  # enter end time in case this is only observation.
+                 thisStorm.name = thisStorm.name +" "+ thisStorm.startTime[:4]
                  thisStorm.endTime = observation.time 
                  nseg = 1 # New storm ready for next record
                  thisStorm.source = 0 # Flag data source as IBTrACS
@@ -351,6 +353,7 @@ for i, file in enumerate(hFiles):
 #                     thisStorm.nobs, "observations and is index ", numStorms)            
 #==============================================================================
             thisStorm.startTime = thisStorm.segs[0].time
+            thisStorm.name = thisStorm.name +" "+ thisStorm.startTime[:4]
             thisStorm.endTime = thisStorm.segs[len(thisStorm.segs)-1].time
             allStorms.append(thisStorm)
 #==============================================================================
@@ -480,8 +483,6 @@ for i, storm in enumerate(allStorms):
 
         """ Get data for ENSO stage for each segment by start time """
         thisKey = storm.segs[j].time[:7]
-        #print(thisKey, ensoLookup.get(thisKey))
-        #storm.segs[j].enso = ensoLookup[storm.segs[j].time[:7]] 
         storm.segs[j].enso = ensoLookup.get(thisKey) 
         #print(thisKey, ensoLookup.get(thisKey),storm.segs[j].enso)          
         """ Find Max Winds and Saffir-Simpson and Min Pressures """
@@ -497,7 +498,6 @@ for i, storm in enumerate(allStorms):
 #               storm.segs[j].nature,
 #               storm.segs[j].saffir)
 #==============================================================================
-
     """ Now need to process the very last segment """ 
     """ --- ending Lat and Lon for each segment is just the same
     starting location, but offset by 0.01 degrees.  
@@ -515,15 +515,23 @@ for i, storm in enumerate(allStorms):
         storm.maxSaffir = storm.segs[jLast].saffir
     if storm.segs[jLast].pres < storm.minP:
         storm.minP = storm.segs[jLast].pres
-    """ Get data for ENSO stage for each segment by start time """
-#==============================================================================
-#     storm.segs[jLast].enso = ensoLookup[storm.segs[jLast].time[:7]]           
-#==============================================================================
+    """ Get data for ENSO stage for last segment by start time """
+    thisKey = storm.segs[jLast].time[:7]
+    storm.segs[jLast].enso = ensoLookup.get(thisKey) 
+#    storm.segs[jLast].enso = ensoLookup[storm.segs[jLast].time[:7]]           
+
+    """ If Maximum Wind and Minimum Pressure are still the inital values, 
+    replace them with NULLs """
+    if storm.maxW == -99.:
+        storm.maxW = ""
+    if storm.minP == 9999.:
+        storm.minP = ""
+        
 
 stormTracks = shapefile.Writer(shapefile.POLYLINE) #One line & record per storm
 stormTracks.autobalance = 1 # make sure all shapes have records
-stormFields = ['UID','Name','Date','MaxWind','MinPress','NumObs',
-               'MaxSaffir','ENSO']
+stormFields = ['UID','Name','StartDate','EndDate','MaxWind','MinPress',
+               'NumObs','MaxSaffir','ENSO']
 for attribute in stormFields:
     stormTracks.field(attribute) # Add Fields
      
@@ -556,7 +564,7 @@ for i, storm in enumerate(allStorms):
                         thisSegment.saffir,
                         thisSegment.enso,
                         thisSegment.startLon,thisSegment.startLat,
-                        thisSegment.endLon,thisSegment.endLat,
+                        thisSegment.endLon,thisSegment.endLat
                         )
 
 #==============================================================================
@@ -568,11 +576,12 @@ for i, storm in enumerate(allStorms):
     """ Append track to stormTracks list """
     stormTracks.poly(shapeType=3, parts = lineCoords ) # Add the shape
     stormTracks.record(storm.uid,storm.name,storm.startTime, #Add it's attributes
-                 storm.maxW,storm.minP,storm.numSegs,
+                 storm.endTime,storm.maxW,storm.minP,storm.numSegs,
                  storm.maxSaffir,storm.enso)
     """ Save single storm shapefile """
-    thisName = resultsDir+storm.name.replace(":","_")+"_"+storm.startTime[:4]
-    #this
+#    thisName = resultsDir+storm.name.replace(":","_")+"_"+storm.startTime[:4]
+    thisName = resultsDir+storm.name.replace(":","_").replace(" ","_")
+
     oneStorm.save(thisName)
     # create the PRJ file
     prj = open("%s.prj" % thisName, "w")
