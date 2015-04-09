@@ -81,21 +81,21 @@ def getCat(nature, wind):
     Saffir-Simpson scale or other classification given the reported
     Nature and 1-minute averaged wind speed in nautical miles/hour (Knots).
     The logic used in the previous SQL calculations for classification was:
-        DESCRIP_NAME HHT_CODE MIN  MAX  COLOR     LINE      ?   ORIGINAL_NATURE
-        Disturbance	     DS	30	70	black	Solid	4	DB
-        Extratropical    ET	0	0	black	dashed	5	EX
-        Category 1	     H1	64	83	red	     Solid	10	HU
-        Category 2	     H2	83	96	red	     Solid	11	HU
-        Category 3	     H3	96	113	dark red  Solid	12	HU
-        Category 4	     H4	113	137	dark red  Solid	13	HU
-        Category 5	     H5	137	999	dark red  Solid	14	HU
-        Mixed Reports    MX	30	70	gray	     Solid	3	NA or MX
-        Unknown          N/A	-1	999	gray	     Solid	2	NA
-        N/A              NR	30	70	blue	     Solid	1	NA
-        Subtrop Depr     SD	0	34	orange	Solid	6	SD
-        Subtrop Storm    SS	34	999	blue	     Solid	7	SS
-        Trop Depression  TD	0	34	green	Solid	8	TD
-        Tropical Storm   TS	34	64	yellow	Solid	9	TS
+        DESCRIP_NAME HHT_CODE   MIN  MAX    COLOR       LINE     ?   ORIGINAL_NATURE
+        Disturbance      DS      30   70    black       Solid    4      DB
+        Extratropical    ET       0   0     black       dashed   5      EX
+        Category 1       H1      64   83    red         Solid   10      HU
+        Category 2       H2      83   96    red         Solid   11      HU
+        Category 3       H3      96  113    dark red    Solid   12      HU
+        Category 4       H4     113  137    dark red    Solid   13      HU
+        Category 5       H5     137  999    dark red    Solid   14      HU
+        Mixed Reports    MX      30   70    gray        Solid    3      NA or MX
+        Unknown          N/A     -1  999    gray        Solid    2      NA
+        N/A              NR      30   70    blue        Solid    1      NA
+        Subtrop Depr     SD       0   34    orange      Solid    6      SD
+        Subtrop Storm    SS      34  999    blue        Solid    7      SS
+        Trop Depression  TD       0  34     green       Solid    8      TD
+        Tropical Storm   TS      34  64     yellow      Solid    9      TS
         
     Boundary values and naming conventions used here follow the FAQ from
     NOAA's Hurricane Research Division:
