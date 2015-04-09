@@ -16,31 +16,31 @@ import ensoDownload
 """ Declarations and Parameters """
 TESTING = False
 #workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
-workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
-workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
+#workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
+#workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
+#workDir = "T:/DaveE/HHT/" # TEMP drive On OCM Network
+workDir = "/san1/tmp/DaveE/HHT/" # Temp drive On OCM Linux
 #workDir = "/home/dave/Data/Hurricanes/" # On Zog
+dataDir = workDir + "Data/"  # Data location
 if TESTING:  
-    dataDir = workDir  # Testing Data location
-    h2nepacRaw = workDir + "h2nmid.txt" # HURDAT2 NE North Pacific Data
-    h2AtlRaw = workDir + "h2mid.txt"     # HURDAT2 North Atlantic Data
-    ibRaw = workDir + "midAllcsc.csv"           # IBTrACS CSC version Data
+    h2nepacRaw = dataDir + "h2nmid.txt" # HURDAT2 NE North Pacific Data
+    h2AtlRaw = dataDir + "h2mid.txt"     # HURDAT2 North Atlantic Data
+    ibRaw = dataDir + "midAllcsc.csv"           # IBTrACS CSC version Data
 #==============================================================================
 #     h2nepacRaw = workDir + "h2NEPACtail.txt" # HURDAT2 NE North Pacific Data
 #     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-    resultsDir = workDir + "Res_T6/"  #  Location for final data
+    resultsDir = workDir + "Res_T1/"  #  Location for final data
 else:
-#    h2_dataDir = "C:/GIS/Hurricane/HURDAT/"  # Main Data location
-    h2_dataDir = workDir  # Main Data location on Zog
-    #h2AtlRaw = h2_dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
-    #h2nepacRaw = h2_dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
-    h2AtlRaw = h2_dataDir + "hurdat2-1851-2013-052714.txt"     # HURDAT2 North Atlantic Data
-    h2nepacRaw = h2_dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
-    ib_dataDir = workDir  # Main Data location
-#    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r06.csv" # IBTrACS ALL v03R06
-    ibRaw = ib_dataDir + "Allstorms.ibtracs_csc.v03r06.csv" # IBTrACS CSC v03R06
-#    ibRaw = ib_dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS ALL V03R05
+    #h2AtlRaw = dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
+    #h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
+    #h2AtlRaw = dataDir + "hurdat2-1851-2013-052714.txt"     # HURDAT2 North Atlantic Data 2013
+    h2AtlRaw = dataDir + "hurdat2-1851-2014-022315.txt"     # HURDAT2 North Atlantic Data 2014
+    h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
+#    ibRaw = dataDir + "Allstorms.ibtracs_all.v03r06.csv" # IBTrACS ALL v03R06
+    ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r06.csv" # IBTrACS CSC v03R06
+#    ibRaw = dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS ALL V03R05
 
     resultsDir = workDir + "Res_00/"  #  Location for final data
 
@@ -82,20 +82,20 @@ def getCat(nature, wind):
     Nature and 1-minute averaged wind speed in nautical miles/hour (Knots).
     The logic used in the previous SQL calculations for classification was:
         DESCRIP_NAME HHT_CODE MIN  MAX  COLOR     LINE      ?   ORIGINAL_NATURE
-        Disturbance	     DS	30	70	black	     Solid	4	DB
-        Extratropical    ET	0	0	black	     dashed	5	EX
+        Disturbance	     DS	30	70	black	Solid	4	DB
+        Extratropical    ET	0	0	black	dashed	5	EX
         Category 1	     H1	64	83	red	     Solid	10	HU
         Category 2	     H2	83	96	red	     Solid	11	HU
-        Category 3	     H3	96	113	dark red    Solid	12	HU
-        Category 4	     H4	113	137	dark red    Solid	13	HU
-        Category 5	     H5	137	999	dark red    Solid	14	HU
+        Category 3	     H3	96	113	dark red  Solid	12	HU
+        Category 4	     H4	113	137	dark red  Solid	13	HU
+        Category 5	     H5	137	999	dark red  Solid	14	HU
         Mixed Reports    MX	30	70	gray	     Solid	3	NA or MX
-        Unknown	     N/A	-1	999	gray	     Solid	2	NA
+        Unknown          N/A	-1	999	gray	     Solid	2	NA
         N/A              NR	30	70	blue	     Solid	1	NA
-        Subtrop Depr     SD	0	34	orange	     Solid	6	SD
+        Subtrop Depr     SD	0	34	orange	Solid	6	SD
         Subtrop Storm    SS	34	999	blue	     Solid	7	SS
-        Trop Depression  TD	0	34	green	     Solid	8	TD
-        Tropical Storm   TS	34	64	yellow	     Solid	9	TS
+        Trop Depression  TD	0	34	green	Solid	8	TD
+        Tropical Storm   TS	34	64	yellow	Solid	9	TS
         
     Boundary values and naming conventions used here follow the FAQ from
     NOAA's Hurricane Research Division:
@@ -541,14 +541,62 @@ segmentFields = ['UID','Name','Date','Wind','Press',
                  'Nature','SS_Scale','ENSO',
                  'StartLon','StartLat','EndLon','EndLat']
 
+#for i, storm in enumerate(allStorms):
+#    """ Create new single storm shapefile with each segment as a record
+#        One shapefile/storm """
+#    oneStorm = shapefile.Writer(shapefile.POLYLINE) # New shapefile
+#    oneStorm.autoBalance = 1 # make sure all shapes have records
+#    for attribute in segmentFields: # Add Fields for track shapefile
+#        oneStorm.field(attribute) 
+#        
+#    lineCoords = [] # Create list for stormTracks shapefile
+#        
+#    for thisSegment in storm.segs:
+#        """ Add coordinates to the Track shapefile list """
+#        lineCoords.append([[thisSegment.startLon, thisSegment.startLat],
+#                              [thisSegment.endLon, thisSegment.endLat]])
+#        """ Add this segment to the segments shapefile """
+#        oneStorm.poly(parts = [[[thisSegment.startLon, thisSegment.startLat],
+#                              [thisSegment.endLon, thisSegment.endLat]]])
+#        oneStorm.record(storm.uid,storm.name,
+#                        thisSegment.time,thisSegment.wsp,
+#                        thisSegment.pres,thisSegment.nature,
+#                        thisSegment.saffir,
+#                        thisSegment.enso,
+#                        thisSegment.startLon,thisSegment.startLat,
+#                        thisSegment.endLon,thisSegment.endLat
+#                        )
+##==============================================================================
+##     print(lineCoords)
+##     foo = input(" any key to continue")
+##==============================================================================
+#    """ Find ENSO state for start of the storm """
+#    storm.enso = ensoLookup.get(storm.segs[0].time[:7])
+#    """ Append track to stormTracks list """
+#    stormTracks.poly(shapeType=3, parts = lineCoords ) # Add the shape
+#    stormTracks.record(storm.uid,storm.name,storm.startTime, #Add it's attributes
+#                 storm.endTime,storm.maxW,storm.minP,storm.numSegs,
+#                 storm.maxSaffir,storm.enso)
+#    """ Save single storm shapefile """
+##    thisName = resultsDir+storm.name.replace(":","_")+"_"+storm.startTime[:4]
+#    thisName = resultsDir+storm.name.replace(":","_").replace(" ","_")
+#
+#    oneStorm.save(thisName)
+#    # create the PRJ file
+#    prj = open("%s.prj" % thisName, "w")
+#    prj.write(epsg)
+#    prj.close()   
+#
+
+""" New approach to put all SEGMENTS into one shapefile
+    Create new single shapefile with every storm segment as a record
+    Only one shapefile for allstorm """
+allSegments = shapefile.Writer(shapefile.POLYLINE) # New shapefile
+allSegments.autoBalance = 1 # make sure all shapes have records
+for attribute in segmentFields: # Add Fields for track shapefile
+    allSegments.field(attribute) 
 for i, storm in enumerate(allStorms):
-    """ Create new single storm shapefile with each segment as a record
-        One shapefile/storm """
-    oneStorm = shapefile.Writer(shapefile.POLYLINE) # New shapefile
-    oneStorm.autoBalance = 1 # make sure all shapes have records
-    for attribute in segmentFields: # Add Fields for track shapefile
-        oneStorm.field(attribute) 
-        
+                
     lineCoords = [] # Create list for stormTracks shapefile
         
     for thisSegment in storm.segs:
@@ -556,9 +604,9 @@ for i, storm in enumerate(allStorms):
         lineCoords.append([[thisSegment.startLon, thisSegment.startLat],
                               [thisSegment.endLon, thisSegment.endLat]])
         """ Add this segment to the segments shapefile """
-        oneStorm.poly(parts = [[[thisSegment.startLon, thisSegment.startLat],
+        allSegments.poly(parts = [[[thisSegment.startLon, thisSegment.startLat],
                               [thisSegment.endLon, thisSegment.endLat]]])
-        oneStorm.record(storm.uid,storm.name,
+        allSegments.record(storm.uid,storm.name,
                         thisSegment.time,thisSegment.wsp,
                         thisSegment.pres,thisSegment.nature,
                         thisSegment.saffir,
@@ -578,15 +626,15 @@ for i, storm in enumerate(allStorms):
     stormTracks.record(storm.uid,storm.name,storm.startTime, #Add it's attributes
                  storm.endTime,storm.maxW,storm.minP,storm.numSegs,
                  storm.maxSaffir,storm.enso)
-    """ Save single storm shapefile """
+""" Save Segments shapefile """
 #    thisName = resultsDir+storm.name.replace(":","_")+"_"+storm.startTime[:4]
-    thisName = resultsDir+storm.name.replace(":","_").replace(" ","_")
+thisName = resultsDir+'AllSegments'
 
-    oneStorm.save(thisName)
-    # create the PRJ file
-    prj = open("%s.prj" % thisName, "w")
-    prj.write(epsg)
-    prj.close()   
+allSegments.save(thisName)
+# create the PRJ file
+prj = open("%s.prj" % thisName, "w")
+prj.write(epsg)
+prj.close()   
 
 #stormTracks.append(track)
 """ Write out shapefiles """
