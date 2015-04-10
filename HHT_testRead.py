@@ -14,7 +14,7 @@ import math
 import shapefile
 import ensoDownload
 """ Declarations and Parameters """
-TESTING = False
+TESTING = True
 #workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
 #workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 #workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
@@ -31,7 +31,7 @@ if TESTING:
 #     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-    resultsDir = workDir + "Res_T1/"  #  Location for final data
+    resultsDir = workDir + "Results/T1/"  #  Location for final data
 else:
     #h2AtlRaw = dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
     #h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
@@ -42,7 +42,7 @@ else:
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r06.csv" # IBTrACS CSC v03R06
 #    ibRaw = dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS ALL V03R05
 
-    resultsDir = workDir + "Res_00/"  #  Location for final data
+    resultsDir = workDir + "Results/Full01/"  #  Location for final data
 
 """ Choose to use either HURDAT2 data as the 'base' data layer (a new
     behaviour) or to use IBTrACS as the 'base' depending on the 
@@ -66,14 +66,16 @@ epsg = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563
 ensoLookup = {}
 ensoLookup = ensoDownload.ensoDict()
 
-checkYears = ['2009','2010', '2011','2012']
-checkMonths = ['01','02','03','04','05','06','07','08','09','10','11','12']
-print(' Month: %s' % (checkMonths),end='')
-for year in checkYears:
-    print('\n  %s:' % (year),end='')
-    for month in checkMonths:
-        print(' %4s ' % (ensoLookup[year+'-'+month]),end='')
-print('\n\n')
+#==============================================================================
+# checkYears = ['2009','2010', '2011','2012']
+# checkMonths = ['01','02','03','04','05','06','07','08','09','10','11','12']
+# print(' Month: %s' % (checkMonths),end='')
+# for year in checkYears:
+#     print('\n  %s:' % (year),end='')
+#     for month in checkMonths:
+#         print(' %4s ' % (ensoLookup[year+'-'+month]),end='')
+# print('\n\n')
+#==============================================================================
 """ Processing functions """
 """--------------------------------------------------------------------"""
 def getCat(nature, wind):
@@ -94,8 +96,8 @@ def getCat(nature, wind):
         N/A              NR      30   70    blue        Solid    1      NA
         Subtrop Depr     SD       0   34    orange      Solid    6      SD
         Subtrop Storm    SS      34  999    blue        Solid    7      SS
-        Trop Depression  TD       0  34     green       Solid    8      TD
-        Tropical Storm   TS      34  64     yellow      Solid    9      TS
+        Trop Depression  TD       0   34    green       Solid    8      TD
+        Tropical Storm   TS      34   64    yellow      Solid    9      TS
         
     Boundary values and naming conventions used here follow the FAQ from
     NOAA's Hurricane Research Division:
@@ -530,16 +532,28 @@ for i, storm in enumerate(allStorms):
 
 stormTracks = shapefile.Writer(shapefile.POLYLINE) #One line & record per storm
 stormTracks.autobalance = 1 # make sure all shapes have records
-stormFields = ['UID','Name','StartDate','EndDate','MaxWind','MinPress',
-               'NumObs','MaxSaffir','ENSO']
+stormFields = ['STORMID','MxWind1min','BASIN','Disp_Name','DDateRange',
+               'BegObDate','EndObDate','D_SaffirS',
+               'FP_Years','FP_Months','FP_CR','FP_MSS','FP_MP',
+               'StrmRptURL','IntesOrder', # End of Previous Attributes
+               'NumObs','ENSO']
+#==============================================================================
+# stormFields = ['UID','Name','StartDate','EndDate','MaxWind','MinPress',
+#                'NumObs','MaxSaffir','ENSO']
+#==============================================================================
 for attribute in stormFields:
     stormTracks.field(attribute) # Add Fields
      
 
-""" For each storm : """
-segmentFields = ['UID','Name','Date','Wind','Press',
-                 'Nature','SS_Scale','ENSO',
-                 'StartLon','StartLat','EndLon','EndLat']
+""" For SEGMENTS : """
+segmentFields = ['STORMID','MSW_1min','BeginObHr','BeginLat','BEGINLON',
+                 'Min_Press','Basin','SS_Scale','DateNTime','DMSW_1min',
+                 'DispName','DispDate','DMin_Press','DDateNTime', #End of previous attributes
+                 'Nature','ENSO',
+                 'EndLon','EndLat']
+#segmentFields = ['UID','Name','Date','Wind','Press',
+#                 'Nature','SS_Scale','ENSO',
+#                 'StartLon','StartLat','EndLon','EndLat']
 
 #for i, storm in enumerate(allStorms):
 #    """ Create new single storm shapefile with each segment as a record
@@ -606,14 +620,43 @@ for i, storm in enumerate(allStorms):
         """ Add this segment to the segments shapefile """
         allSegments.poly(parts = [[[thisSegment.startLon, thisSegment.startLat],
                               [thisSegment.endLon, thisSegment.endLat]]])
-        allSegments.record(storm.uid,storm.name,
-                        thisSegment.time,thisSegment.wsp,
-                        thisSegment.pres,thisSegment.nature,
-                        thisSegment.saffir,
-                        thisSegment.enso,
-                        thisSegment.startLon,thisSegment.startLat,
-                        thisSegment.endLon,thisSegment.endLat
+        """ We need to putput these attributes: 
+        ['STORMID','MSW_1min','BeginObHr','BeginLat','BEGINLON',
+                 'Min_Press',
+                 'Basin','SS_Scale','DateNTime','DMSW_1min',
+                 'DispName','DispDate','DMin_Press','DDateNTime', #End of previous attributes
+                 'Nature','ENSO',
+                 'EndLon','EndLat'] """
+        allSegments.record(storm.uid,           # Storm ID
+                           thisSegment.wsp,     # Max. Sustained Wind
+                           None,                # Begin Observation Hour Why?
+                           thisSegment.startLat,# Begin Lat
+                           thisSegment.startLon,# Begin Long.
+                           thisSegment.pres,    # Min Pressure
+                           None,                # Basin
+                           thisSegment.saffir,  # Saffir Simpson Scale
+                           thisSegment.time,    # Date and Time
+                           thisSegment.wsp,     # Display Max. Sustained Wind
+                           storm.name,          # Display Storm Name
+                           None,                # Display Date
+                           thisSegment.pres,    # Display Min Pressure
+                           None,                # Display Date and Time
+                           # End of Previous Attributes
+                           thisSegment.nature,  # Nature (not quite SS)
+                           thisSegment.enso,    # ENSO Flag
+                           thisSegment.endLat,  # End Lat
+                           thisSegment.endLon   # End Long.
                         )
+#==============================================================================
+#         allSegments.record(storm.uid,storm.name,
+#                         thisSegment.time,thisSegment.wsp,
+#                         thisSegment.pres,thisSegment.nature,
+#                         thisSegment.saffir,
+#                         thisSegment.enso,
+#                         thisSegment.startLon,thisSegment.startLat,
+#                         thisSegment.endLon,thisSegment.endLat
+#                         )
+#==============================================================================
 
 #==============================================================================
 #     print(lineCoords)
@@ -623,9 +666,30 @@ for i, storm in enumerate(allStorms):
     storm.enso = ensoLookup.get(storm.segs[0].time[:7])
     """ Append track to stormTracks list """
     stormTracks.poly(shapeType=3, parts = lineCoords ) # Add the shape
-    stormTracks.record(storm.uid,storm.name,storm.startTime, #Add it's attributes
-                 storm.endTime,storm.maxW,storm.minP,storm.numSegs,
-                 storm.maxSaffir,storm.enso)
+    """ Need to output these fields:
+            'STORMID','MxWind1min','BASIN','Disp_Name','DDateRange',
+               'BegObDate','EndObDate','D_SaffirS',
+               'FP_Years','FP_Months','FP_CR','FP_MSS','FP_MP',
+               'StrmRptURL','IntesOrder' # End of Previous Attributes
+               'NumObs','ENSO']"""
+    stormTracks.record(storm.uid,       # StormID
+                       storm.maxW,      # Max Sustained WInd, 1 min ave period
+                       None,            # Basin
+                       storm.name,      # Display Storm Name
+                       None,            # Display Date Range
+                       storm.startTime, # Begin Observation Date
+                       storm.endTime,   # End Observation Date
+                       storm.maxSaffir, # Display Saffir Simpson
+                       None,            # Filter Param. Years
+                       None,            # Filter Param. Months
+                       None,            # Filter Param. Climate Regions
+                       None,            # Filter Param. Saffir Simpson 2 letter
+                       storm.minP,      # Filter Param: Minimum Pressure
+                       None,            # Storm Report URL
+                       None,            # Intensity Order (numeric)
+                       # Extra Attributes below
+                       storm.numSegs,   # Number of segments in this Track
+                       storm.enso)      # ENSO Flag
 """ Save Segments shapefile """
 #    thisName = resultsDir+storm.name.replace(":","_")+"_"+storm.startTime[:4]
 thisName = resultsDir+'AllSegments'

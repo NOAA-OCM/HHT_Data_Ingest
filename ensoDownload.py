@@ -93,12 +93,14 @@ def ensoDict():
     #          rawENSOState[(l-2):(l+3)],enso[l])
              
     """ Print the first and last records for comparison w/ CPO web site """
-    for k in range(0,50): 
-       print("Finals:",k,vals[k],"%0.1f"%(ave3Mon[k]),
-             rawENSOState[k],testStat[k],enso[k])
-    for k in range(700,numRows): 
-       print("Finals:",k,vals[k],"%0.1f"%(ave3Mon[k]),
-             rawENSOState[k],testStat[k],enso[k])
+#==============================================================================
+#     for k in range(0,50): 
+#        print("Finals:",k,vals[k],"%0.1f"%(ave3Mon[k]),
+#              rawENSOState[k],testStat[k],enso[k])
+#     for k in range(700,numRows): 
+#        print("Finals:",k,vals[k],"%0.1f"%(ave3Mon[k]),
+#              rawENSOState[k],testStat[k],enso[k])
+#==============================================================================
 
     """ Now put the needed data into a dictionary and return that """
     ensoState = {}
