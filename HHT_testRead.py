@@ -20,8 +20,8 @@ TESTING = True
 #workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
 #workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 #workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
-workDir = "T:/DaveE/HHT/" # TEMP drive On OCM Network
-#workDir = "/san1/tmp/DaveE/HHT/" # Temp drive On OCM Linux
+#workDir = "T:/DaveE/HHT/" # TEMP drive On OCM Network
+workDir = "/san1/tmp/DaveE/HHT/" # Temp drive On OCM Linux
 #workDir = "/home/dave/Data/Hurricanes/" # On Zog
 dataDir = workDir + "Data/"  # Data location
 if TESTING:  
@@ -33,7 +33,7 @@ if TESTING:
 #     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-    resultsDir = workDir + "Results/T1/"  #  Location for final data
+    resultsDir = workDir + "Results/T2/"  #  Location for final data
 else:
     #h2AtlRaw = dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
     #h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
@@ -44,7 +44,7 @@ else:
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r06.csv" # IBTrACS CSC v03R06
 #    ibRaw = dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS ALL V03R05
 
-    resultsDir = workDir + "Results/Full01/"  #  Location for final data
+    resultsDir = workDir + "Results/Full02/"  #  Location for final data
 
 """ Choose to use either HURDAT2 data as the 'base' data layer (a new
     behaviour) or to use IBTrACS as the 'base' depending on the 
@@ -72,6 +72,7 @@ ensoLookup = ensoDownload.ensoDict()
 """
 rptLookup = {}
 rptLookup = stormReportDownload.rptDict()
+Missing=[None, None]
 #==============================================================================
 # checkYears = ['2009','2010', '2011','2012']
 # checkMonths = ['01','02','03','04','05','06','07','08','09','10','11','12']
@@ -694,7 +695,7 @@ for i, storm in enumerate(allStorms):
                        None,            # Filter Param. Climate Regions
                        storm.maxSaffir,            # Filter Param. Saffir Simpson 2 letter
                        storm.minP,      # Filter Param: Minimum Pressure
-                       None,            # Storm Report URL
+                       rptLookup.setdefault(storm.name,Missing)[0],            # Storm Report URL
                        None,            # Intensity Order (numeric)
                        # Extra Attributes below
                        storm.numSegs,   # Number of segments in this Track

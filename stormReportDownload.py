@@ -47,7 +47,7 @@ def rptDict():
         else:
             basin.append("EP")
         #print ((longName + " " + syear[i]))
-        strName.append(longName + " " + syear[i])
+        strName.append(longName.upper() + " " + syear[i])
         
     """ Now put needed items into a dictionary and return it: """
     reportDict = {}
