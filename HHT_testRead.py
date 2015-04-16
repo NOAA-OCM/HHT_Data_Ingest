@@ -8,18 +8,20 @@ Created 2014-12-11 by David L Eslinger (DLE)
     Charleston, SC USA
     
 Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
-
+         2015-04-16: Adding code to find Storm Report URLs from:
+             http://www.nhc.noaa.gov/TCR_StormReportsIndex.xml (DLE)
 """
 import math
 import shapefile
 import ensoDownload
+import stormReportDownload
 """ Declarations and Parameters """
 TESTING = True
 #workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
 #workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 #workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
-#workDir = "T:/DaveE/HHT/" # TEMP drive On OCM Network
-workDir = "/san1/tmp/DaveE/HHT/" # Temp drive On OCM Linux
+workDir = "T:/DaveE/HHT/" # TEMP drive On OCM Network
+#workDir = "/san1/tmp/DaveE/HHT/" # Temp drive On OCM Linux
 #workDir = "/home/dave/Data/Hurricanes/" # On Zog
 dataDir = workDir + "Data/"  # Data location
 if TESTING:  
@@ -65,7 +67,11 @@ epsg = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563
 """ Get dictionary of ENSO state by YYYY-MM key """
 ensoLookup = {}
 ensoLookup = ensoDownload.ensoDict()
-
+""" Get NHC Storm reports for HURDAT storms from:
+             http://www.nhc.noaa.gov/TCR_StormReportsIndex.xml (DLE)
+"""
+rptLookup = {}
+rptLookup = stormReportDownload.rptDict()
 #==============================================================================
 # checkYears = ['2009','2010', '2011','2012']
 # checkMonths = ['01','02','03','04','05','06','07','08','09','10','11','12']
@@ -77,6 +83,9 @@ ensoLookup = ensoDownload.ensoDict()
 # print('\n\n')
 #==============================================================================
 """ Processing functions """
+"""--------------------------------------------------------------------"""
+def getStormReport(name,year):
+    return "no report"
 """--------------------------------------------------------------------"""
 def getCat(nature, wind):
     """ This function returns the appropriate classification of 
@@ -535,7 +544,7 @@ stormTracks.autobalance = 1 # make sure all shapes have records
 stormFields = ['STORMID','MxWind1min','BASIN','Disp_Name','DDateRange',
                'BegObDate','EndObDate','D_SaffirS',
                'FP_Years','FP_Months','FP_CR','FP_MSS','FP_MP',
-               'StrmRptURL','IntesOrder', # End of Previous Attributes
+               'StrmRptURL','In10sOrder', # End of Previous Attributes
                'NumObs','ENSO']
 #==============================================================================
 # stormFields = ['UID','Name','StartDate','EndDate','MaxWind','MinPress',
@@ -670,7 +679,7 @@ for i, storm in enumerate(allStorms):
             'STORMID','MxWind1min','BASIN','Disp_Name','DDateRange',
                'BegObDate','EndObDate','D_SaffirS',
                'FP_Years','FP_Months','FP_CR','FP_MSS','FP_MP',
-               'StrmRptURL','IntesOrder' # End of Previous Attributes
+               'StrmRptURL','In10sOrder' # End of Previous Attributes
                'NumObs','ENSO']"""
     stormTracks.record(storm.uid,       # StormID
                        storm.maxW,      # Max Sustained WInd, 1 min ave period
@@ -683,7 +692,7 @@ for i, storm in enumerate(allStorms):
                        None,            # Filter Param. Years
                        None,            # Filter Param. Months
                        None,            # Filter Param. Climate Regions
-                       None,            # Filter Param. Saffir Simpson 2 letter
+                       storm.maxSaffir,            # Filter Param. Saffir Simpson 2 letter
                        storm.minP,      # Filter Param: Minimum Pressure
                        None,            # Storm Report URL
                        None,            # Intensity Order (numeric)
