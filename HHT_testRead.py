@@ -637,20 +637,25 @@ for i, storm in enumerate(allStorms):
                  'DispName','DispDate','DMin_Press','DDateNTime', #End of previous attributes
                  'Nature','ENSO',
                  'EndLon','EndLat'] """
+        """ Extra values to match old (pre-2015) database structure """
+        basin = rptLookup.setdefault(storm.name,Missing)[1]
+        begObsHour = None
+        dispDate = None
+        dispDateTime = None
         allSegments.record(storm.uid,           # Storm ID
                            thisSegment.wsp,     # Max. Sustained Wind
                            None,                # Begin Observation Hour Why?
                            thisSegment.startLat,# Begin Lat
                            thisSegment.startLon,# Begin Long.
                            thisSegment.pres,    # Min Pressure
-                           None,                # Basin
+                           basin,               # Basin
                            thisSegment.saffir,  # Saffir Simpson Scale
                            thisSegment.time,    # Date and Time
                            thisSegment.wsp,     # Display Max. Sustained Wind
                            storm.name,          # Display Storm Name
-                           None,                # Display Date
+                           dispDate,            # Display Date
                            thisSegment.pres,    # Display Min Pressure
-                           None,                # Display Date and Time
+                           dispDateTime,        # Display Date and Time
                            # End of Previous Attributes
                            thisSegment.nature,  # Nature (not quite SS)
                            thisSegment.enso,    # ENSO Flag
@@ -682,21 +687,30 @@ for i, storm in enumerate(allStorms):
                'FP_Years','FP_Months','FP_CR','FP_MSS','FP_MP',
                'StrmRptURL','In10sOrder' # End of Previous Attributes
                'NumObs','ENSO']"""
+    """ Extra values to match old (pre-2015) database structure """
+    basin = rptLookup.setdefault(storm.name,Missing)[1]
+    rptURL = rptLookup.setdefault(storm.name,Missing)[0]
+    dateRng = None
+    filtYrs = None
+    filtMons = None
+    filtMinP = None
+    filtClimReg = None
+    """   --------  End of Extra fields   ------------    """
     stormTracks.record(storm.uid,       # StormID
                        storm.maxW,      # Max Sustained WInd, 1 min ave period
-                       None,            # Basin
+                       basin,           # Basin
                        storm.name,      # Display Storm Name
-                       None,            # Display Date Range
+                       dateRng,         # Display Date Range
                        storm.startTime, # Begin Observation Date
                        storm.endTime,   # End Observation Date
                        storm.maxSaffir, # Display Saffir Simpson
-                       None,            # Filter Param. Years
-                       None,            # Filter Param. Months
-                       None,            # Filter Param. Climate Regions
-                       storm.maxSaffir,            # Filter Param. Saffir Simpson 2 letter
+                       filtYrs,         # Filter Param. Years
+                       filtMons,        # Filter Param. Months
+                       filtClimReg,     # Filter Param. Climate Regions
+                       storm.maxSaffir, # Filter Param. Saffir Simpson 2 letter
                        storm.minP,      # Filter Param: Minimum Pressure
-                       rptLookup.setdefault(storm.name,Missing)[0],            # Storm Report URL
-                       None,            # Intensity Order (numeric)
+                       rptURL,          # Storm Report URL
+                       filtMinP,        # Intensity Order (numeric)
                        # Extra Attributes below
                        storm.numSegs,   # Number of segments in this Track
                        storm.enso)      # ENSO Flag
