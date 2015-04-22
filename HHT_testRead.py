@@ -33,7 +33,7 @@ if TESTING:
 #     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-    resultsDir = workDir + "Results/T2/"  #  Location for final data
+    resultsDir = workDir + "Results/T3/"  #  Location for final data
 else:
     #h2AtlRaw = dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
     #h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
@@ -542,25 +542,53 @@ for i, storm in enumerate(allStorms):
 
 stormTracks = shapefile.Writer(shapefile.POLYLINE) #One line & record per storm
 stormTracks.autobalance = 1 # make sure all shapes have records
-stormFields = ['STORMID','MxWind1min','BASIN','Disp_Name','DDateRange',
-               'BegObDate','EndObDate','D_SaffirS',
-               'FP_Years','FP_Months','FP_CR','FP_MSS','FP_MP',
-               'StrmRptURL','In10sOrder', # End of Previous Attributes
-               'NumObs','ENSO']
+stormFields = [['STORMID','C','56'],
+               ['MxWind1min','N','19'],
+               ['BASIN','C','4'],
+               ['Disp_Name','C','81'],
+               ['DDateRange','C','140'],
+               ['BegObDate','D',''],
+               ['EndObDate','D',''],
+               ['D_SaffirS','C','10'],
+               ['FP_Years','C','10'],
+               ['FP_Months','C','10'],
+               ['FP_CR','C','10'],
+               ['FP_MSS','C','10'],
+               ['FP_MP','N','10'],
+               ['StrmRptURL','C','254'],
+               ['In10sOrder','n','10\',\'0'], # End of Previous Attributes
+               ['NumObs','C','10'],
+               ['ENSO','C','10']]
 #==============================================================================
 # stormFields = ['UID','Name','StartDate','EndDate','MaxWind','MinPress',
 #                'NumObs','MaxSaffir','ENSO']
 #==============================================================================
 for attribute in stormFields:
-    stormTracks.field(attribute) # Add Fields
+    stormTracks.field(attribute[0],attribute[1],attribute[2]) # Add Fields
+    #stormTracks.field(attribute[:3]) # Add Fields
      
 
 """ For SEGMENTS : """
-segmentFields = ['STORMID','MSW_1min','BeginObHr','BeginLat','BEGINLON',
-                 'Min_Press','Basin','SS_Scale','DateNTime','DMSW_1min',
-                 'DispName','DispDate','DMin_Press','DDateNTime', #End of previous attributes
-                 'Nature','ENSO',
-                 'EndLon','EndLat']
+segmentFields = [['STORMID','C','58'],
+                 ['MSW_1min','C','9'],
+                 ['BeginObHr','N','9\',\'0'],
+                 ['BeginLat','C','10'],
+                 ['BEGINLON','C','10'],
+                 ['Min_Press','C','20'],
+                 ['Basin','C','20'],
+                 ['SS_Scale','C','20'],
+                 ['DateNTime','C','20'],
+                 ['DMSW_1min','C','20'],
+                 ['DispName','C','20'],
+                 ['DispDate','C','20'],
+                 ['DMin_Press','C','20'],
+                 ['DDateNTime','C','20'], #End of previous attributes
+                 ['Nature','C','20'],
+                 ['ENSO','C','20'],
+                 ['EndLat','C','20'],
+                 ['EndLon','C','20']]
+                 
+print(stormFields[3], segmentFields[3])
 #segmentFields = ['UID','Name','Date','Wind','Press',
 #                 'Nature','SS_Scale','ENSO',
 #                 'StartLon','StartLat','EndLon','EndLat']
@@ -618,7 +646,8 @@ segmentFields = ['STORMID','MSW_1min','BeginObHr','BeginLat','BEGINLON',
 allSegments = shapefile.Writer(shapefile.POLYLINE) # New shapefile
 allSegments.autoBalance = 1 # make sure all shapes have records
 for attribute in segmentFields: # Add Fields for track shapefile
-    allSegments.field(attribute) 
+    print(attribute)
+    allSegments.field(attribute[0],attribute[1],attribute[2]) 
 for i, storm in enumerate(allStorms):
                 
     lineCoords = [] # Create list for stormTracks shapefile
@@ -660,8 +689,8 @@ for i, storm in enumerate(allStorms):
                            thisSegment.nature,  # Nature (not quite SS)
                            thisSegment.enso,    # ENSO Flag
                            thisSegment.endLat,  # End Lat
-                           thisSegment.endLon   # End Long.
-                        )
+                           thisSegment.endLon )  # End Long.
+                    
 #==============================================================================
 #         allSegments.record(storm.uid,storm.name,
 #                         thisSegment.time,thisSegment.wsp,
