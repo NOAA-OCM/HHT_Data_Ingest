@@ -13,6 +13,7 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
 """
 import math
 import shapefile
+import datetime as dt
 import ensoDownload
 import stormReportDownload
 """ Declarations and Parameters """
@@ -33,7 +34,7 @@ if TESTING:
 #     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-    resultsDir = workDir + "Results/T3/"  #  Location for final data
+    resultsDir = workDir + "Results/T4/"  #  Location for final data
 else:
     #h2AtlRaw = dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
     #h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
@@ -184,7 +185,11 @@ class Storm(object):
 
 class Observation(object):
     def __init__(self,time,lat,lon,wsp,pres,nature):
-        self.time = time.strip()
+#==============================================================================
+#         self.time = time.strip()
+#         print(self.time)
+#==============================================================================
+        self.time = dt.datetime.strptime(time,'%Y-%m-%d %H:%M:%S')
         self.startLat = float(lat)
         self.startLon = float(lon)
         self.wsp = float(wsp)
@@ -229,6 +234,7 @@ with open(ibRaw, "r") as rawObsFile:
      """ Create first storm """
      thisStorm = Storm(vals[0],          # Unique IBTrACS ID
                        vals[5].strip())  # Name, spaces removed
+#     observation = Segment(vals[6],  # ISO 8601 Time 
      observation = Segment(vals[6],  # ISO 8601 Time 
                            vals[8],  # Lat
                            vals[9],  # Lon
@@ -237,9 +243,11 @@ with open(ibRaw, "r") as rawObsFile:
                            vals[7] ) # Nature
      thisStorm.segs.append(observation)
      thisStorm.startTime = observation.time
-     thisStorm.name = thisStorm.name +" "+ thisStorm.startTime[:4]
+     thisStorm.name = thisStorm.name + " " \
+         + thisStorm.startTime.strftime('%Y') 
      # enter end time in case this is only observation.
      thisStorm.endTime = observation.time 
+     print(thisStorm.startTime)
      nseg = 1
      thisStorm.source = 0            # Flag data source as IBTrACS
      """ First storm and observation entered, begin looping """
@@ -282,7 +290,8 @@ with open(ibRaw, "r") as rawObsFile:
                  thisStorm.segs.append(observation)
                  thisStorm.startTime = observation.time
                  # enter end time in case this is only observation.
-                 thisStorm.name = thisStorm.name +" "+ thisStorm.startTime[:4]
+                 thisStorm.name = thisStorm.name + " " \
+                     + thisStorm.startTime.strftime('%Y') 
                  thisStorm.endTime = observation.time 
                  nseg = 1 # New storm ready for next record
                  thisStorm.source = 0 # Flag data source as IBTrACS
@@ -365,7 +374,9 @@ for i, file in enumerate(hFiles):
 #                     thisStorm.nobs, "observations and is index ", numStorms)            
 #==============================================================================
             thisStorm.startTime = thisStorm.segs[0].time
-            thisStorm.name = thisStorm.name +" "+ thisStorm.startTime[:4]
+            #thisStorm.name = thisStorm.name +" "+ thisStorm.startTime[:4]
+            thisStorm.name = thisStorm.name + " " \
+                 + thisStorm.startTime.strftime('%Y') 
             thisStorm.endTime = thisStorm.segs[len(thisStorm.segs)-1].time
             allStorms.append(thisStorm)
 #==============================================================================
@@ -453,13 +464,6 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
 
     else: # not a duplicate, so copy it to allStorms
         allStorms.append(allSorted[i])
-#==============================================================================
-#         if allSorted[i].source:
-#             print ("H2[{0}] Only Storm {1} from {2} to {3}".format(
-#             allSorted[i].source,allSorted[i].name, 
-#             allSorted[i].startTime, allSorted[i].endTime))
-#==============================================================================
-            
  
 print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
         ibNum, hstormNum[0], hstormNum[1]), "\n ",
@@ -494,22 +498,17 @@ for i, storm in enumerate(allStorms):
                                     (storm.segs[j].wsp))
 
         """ Get data for ENSO stage for each segment by start time """
-        thisKey = storm.segs[j].time[:7]
+       # thisKey = storm.segs[j].time[:7]
+        thisKey = storm.segs[j].time.strftime('%Y-%m')
         storm.segs[j].enso = ensoLookup.get(thisKey) 
-        #print(thisKey, ensoLookup.get(thisKey),storm.segs[j].enso)          
+        print(thisKey, ensoLookup.get(thisKey),storm.segs[j].enso)          
         """ Find Max Winds and Saffir-Simpson and Min Pressures """
         if storm.segs[j].wsp > storm.maxW: # New Max found so update MaxW and SS
             storm.maxW = storm.segs[j].wsp
             storm.maxSaffir = storm.segs[j].saffir
         if storm.segs[j].pres < storm.minP:
             storm.minP = storm.segs[j].pres
-#==============================================================================
-#         print('On ',j,'of',len(storm.segs), 'records, ',
-#               'wind, nature, SS = ',
-#               storm.segs[j].wsp,
-#               storm.segs[j].nature,
-#               storm.segs[j].saffir)
-#==============================================================================
+
     """ Now need to process the very last segment """ 
     """ --- ending Lat and Lon for each segment is just the same
     starting location, but offset by 0.01 degrees.  
@@ -528,7 +527,8 @@ for i, storm in enumerate(allStorms):
     if storm.segs[jLast].pres < storm.minP:
         storm.minP = storm.segs[jLast].pres
     """ Get data for ENSO stage for last segment by start time """
-    thisKey = storm.segs[jLast].time[:7]
+    thisKey = storm.segs[j].time.strftime('%Y-%m')
+    #thisKey = storm.segs[jLast].time[:7]
     storm.segs[jLast].enso = ensoLookup.get(thisKey) 
 #    storm.segs[jLast].enso = ensoLookup[storm.segs[jLast].time[:7]]           
 
@@ -547,8 +547,8 @@ stormFields = [['STORMID','C','56'],
                ['BASIN','C','4'],
                ['Disp_Name','C','81'],
                ['DDateRange','C','140'],
-               ['BegObDate','D',''],
-               ['EndObDate','D',''],
+               ['BegObDate','D','10'],
+               ['EndObDate','D','20'],
                ['D_SaffirS','C','10'],
                ['FP_Years','C','10'],
                ['FP_Months','C','10'],
@@ -556,7 +556,7 @@ stormFields = [['STORMID','C','56'],
                ['FP_MSS','C','10'],
                ['FP_MP','N','10'],
                ['StrmRptURL','C','254'],
-               ['In10sOrder','n','10\',\'0'], # End of Previous Attributes
+               ['In10sOrder','N','10'], # End of Previous Attributes
                ['NumObs','C','10'],
                ['ENSO','C','10']]
 #==============================================================================
@@ -571,7 +571,7 @@ for attribute in stormFields:
 """ For SEGMENTS : """
 segmentFields = [['STORMID','C','58'],
                  ['MSW_1min','C','9'],
-                 ['BeginObHr','N','9\',\'0'],
+                 ['BeginObHr','N','9'],
                  ['BeginLat','C','10'],
                  ['BEGINLON','C','10'],
                  ['Min_Press','C','20'],
@@ -707,7 +707,7 @@ for i, storm in enumerate(allStorms):
 #     foo = input(" any key to continue")
 #==============================================================================
     """ Find ENSO state for start of the storm """
-    storm.enso = ensoLookup.get(storm.segs[0].time[:7])
+    storm.enso = ensoLookup.get(storm.segs[0].time.strftime('%Y-%m'))
     """ Append track to stormTracks list """
     stormTracks.poly(shapeType=3, parts = lineCoords ) # Add the shape
     """ Need to output these fields:

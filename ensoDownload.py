@@ -92,8 +92,8 @@ def ensoDict():
     #    print(l,vals[l],rawENSOState[l],testStat,"from:",
     #          rawENSOState[(l-2):(l+3)],enso[l])
              
-    """ Print the first and last records for comparison w/ CPO web site """
 #==============================================================================
+#     """ Print the first and last records for comparison w/ CPO web site """
 #     for k in range(0,50): 
 #        print("Finals:",k,vals[k],"%0.1f"%(ave3Mon[k]),
 #              rawENSOState[k],testStat[k],enso[k])
