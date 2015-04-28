@@ -17,7 +17,7 @@ import datetime as dt
 import ensoDownload
 import stormReportDownload
 """ Declarations and Parameters """
-TESTING = True
+TESTING = False
 #workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
 #workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 #workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
@@ -34,7 +34,7 @@ if TESTING:
 #     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-    resultsDir = workDir + "Results/T4/"  #  Location for final data
+    resultsDir = workDir + "Results/T3/"  #  Location for final data
 else:
     #h2AtlRaw = dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
     #h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
@@ -45,7 +45,7 @@ else:
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r06.csv" # IBTrACS CSC v03R06
 #    ibRaw = dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS ALL V03R05
 
-    resultsDir = workDir + "Results/Full02/"  #  Location for final data
+    resultsDir = workDir + "Results/Full03/"  #  Location for final data
 
 """ Choose to use either HURDAT2 data as the 'base' data layer (a new
     behaviour) or to use IBTrACS as the 'base' depending on the 
@@ -109,7 +109,11 @@ def getCat(nature, wind):
         Subtrop Storm    SS      34  999    blue        Solid    7      SS
         Trop Depression  TD       0   34    green       Solid    8      TD
         Tropical Storm   TS      34   64    yellow      Solid    9      TS
-        
+    NOTE: As of 4/29/2015, the IBTrACS and HURDAT2 data files used a total
+       of 13 different Nature names:
+ 'ET', 'EX', 'NR', 'HU', 'DS', 'TD', 'SS', 'LO', 'PT', 'SD', 'DB', 'TS', 'MX'
+
+    
     Boundary values and naming conventions used here follow the FAQ from
     NOAA's Hurricane Research Division:
             http://www.aoml.noaa.gov/hrd/tcfaq/A5.html
@@ -175,7 +179,7 @@ class Storm(object):
         self.name = name.strip()
         self.startTime = None
         self.endTime = None
-        self.maxW = -99.
+        self.maxW = -1.
         self.minP = 9999.
         self.numSegs = 0
         self.maxSaffir = ""
@@ -192,8 +196,14 @@ class Observation(object):
         self.time = dt.datetime.strptime(time,'%Y-%m-%d %H:%M:%S')
         self.startLat = float(lat)
         self.startLon = float(lon)
-        self.wsp = float(wsp)
-        self.pres = float(pres)
+        if float(wsp) <= 0:
+            self.wsp = -1.0
+        else:
+            self.wsp = float(wsp)
+        if float(pres) <= 900:
+            self.pres = -1.0
+        else:
+            self.pres = float(pres)
         self.nature = nature.strip()
 
 class Segment(Observation):
@@ -474,6 +484,8 @@ print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
 """ -------------------- All storms are now unique -------------------- """
 
 """ Now process unique storms for QA/QC and finding Saffir-Simpson value """
+""" Make a list of all the Nature types. Needed for setting up enso logic"""
+allNatures = []
 #for i, storm in enumerate(allStorms[11700:11802:4]):
 #for i, storm in enumerate(allStorms[1:3]):
 for i, storm in enumerate(allStorms):
@@ -482,7 +494,7 @@ for i, storm in enumerate(allStorms):
     jLast = storm.numSegs-1
     for j in range(0,jLast):
         """ For each segment in the storm find: """
-
+        allNatures.append(storm.segs[j].nature)
         """ --- ending Lat and Lon for each segment"""
         storm.segs[j].endLat = storm.segs[j+1].startLat
         """ Make sure LONGITUDE do not change sign across the +-180 line"""
@@ -501,7 +513,7 @@ for i, storm in enumerate(allStorms):
        # thisKey = storm.segs[j].time[:7]
         thisKey = storm.segs[j].time.strftime('%Y-%m')
         storm.segs[j].enso = ensoLookup.get(thisKey) 
-        print(thisKey, ensoLookup.get(thisKey),storm.segs[j].enso)          
+        #print(thisKey, ensoLookup.get(thisKey),storm.segs[j].enso)          
         """ Find Max Winds and Saffir-Simpson and Min Pressures """
         if storm.segs[j].wsp > storm.maxW: # New Max found so update MaxW and SS
             storm.maxW = storm.segs[j].wsp
@@ -527,7 +539,10 @@ for i, storm in enumerate(allStorms):
     if storm.segs[jLast].pres < storm.minP:
         storm.minP = storm.segs[jLast].pres
     """ Get data for ENSO stage for last segment by start time """
-    thisKey = storm.segs[j].time.strftime('%Y-%m')
+    try:
+        thisKey = storm.segs[jLast].time.strftime('%Y-%m')
+    except:
+        print(j, storm.segs[jLast].time)
     #thisKey = storm.segs[jLast].time[:7]
     storm.segs[jLast].enso = ensoLookup.get(thisKey) 
 #    storm.segs[jLast].enso = ensoLookup[storm.segs[jLast].time[:7]]           
@@ -539,6 +554,8 @@ for i, storm in enumerate(allStorms):
     if storm.minP == 9999.:
         storm.minP = ""
         
+uniqueNatures = set(allNatures)
+print(uniqueNatures)
 
 stormTracks = shapefile.Writer(shapefile.POLYLINE) #One line & record per storm
 stormTracks.autobalance = 1 # make sure all shapes have records
@@ -570,25 +587,25 @@ for attribute in stormFields:
 
 """ For SEGMENTS : """
 segmentFields = [['STORMID','C','58'],
-                 ['MSW_1min','C','9'],
+                 ['MSW_1min','N','9'],
                  ['BeginObHr','N','9'],
                  ['BeginLat','C','10'],
                  ['BEGINLON','C','10'],
-                 ['Min_Press','C','20'],
-                 ['Basin','C','20'],
-                 ['SS_Scale','C','20'],
+                 ['Min_Press','C','10'],
+                 ['Basin','C','10'],
+                 ['SS_Scale','C','10'],
                  ['DateNTime','C','20'],
-                 ['DMSW_1min','C','20'],
-                 ['DispName','C','20'],
+                 ['DMSW_1min','C','10'],
+                 ['DispName','C','150'],
                  ['DispDate','C','20'],
-                 ['DMin_Press','C','20'],
+                 ['DMin_Press','C','10'],
                  ['DDateNTime','C','20'], #End of previous attributes
                  ['Nature','C','20'],
                  ['ENSO','C','20'],
                  ['EndLat','C','20'],
                  ['EndLon','C','20']]
                  
-print(stormFields[3], segmentFields[3])
+#print(stormFields[3], segmentFields[3])
 #segmentFields = ['UID','Name','Date','Wind','Press',
 #                 'Nature','SS_Scale','ENSO',
 #                 'StartLon','StartLat','EndLon','EndLat']
@@ -646,7 +663,7 @@ print(stormFields[3], segmentFields[3])
 allSegments = shapefile.Writer(shapefile.POLYLINE) # New shapefile
 allSegments.autoBalance = 1 # make sure all shapes have records
 for attribute in segmentFields: # Add Fields for track shapefile
-    print(attribute)
+   # print(attribute)
     allSegments.field(attribute[0],attribute[1],attribute[2]) 
 for i, storm in enumerate(allStorms):
                 
@@ -668,18 +685,19 @@ for i, storm in enumerate(allStorms):
                  'EndLon','EndLat'] """
         """ Extra values to match old (pre-2015) database structure """
         basin = rptLookup.setdefault(storm.name,Missing)[1]
-        begObsHour = None
-        dispDate = None
-        dispDateTime = None
+        begObsHour = dt.datetime.strftime(thisSegment.time,'%H%M')
+        dateTime = dt.datetime.strftime(thisSegment.time,'%m/%d/%Y %H')
+        dispDate = dt.datetime.strftime(thisSegment.time,'%b %d, %Y')
+        dispDateTime = dt.datetime.strftime(thisSegment.time,'%b %d, %Y %Hz')
         allSegments.record(storm.uid,           # Storm ID
                            thisSegment.wsp,     # Max. Sustained Wind
-                           None,                # Begin Observation Hour Why?
+                           begObsHour,          # Begin Observation Hour Why?
                            thisSegment.startLat,# Begin Lat
                            thisSegment.startLon,# Begin Long.
                            thisSegment.pres,    # Min Pressure
                            basin,               # Basin
                            thisSegment.saffir,  # Saffir Simpson Scale
-                           thisSegment.time,    # Date and Time
+                           dateTime,            # Date and Time
                            thisSegment.wsp,     # Display Max. Sustained Wind
                            storm.name,          # Display Storm Name
                            dispDate,            # Display Date
