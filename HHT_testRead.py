@@ -17,12 +17,12 @@ import datetime as dt
 import ensoDownload
 import stormReportDownload
 """ Declarations and Parameters """
-TESTING = False
+TESTING = True
 #workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
 #workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
-#workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
+workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
 #workDir = "T:/DaveE/HHT/" # TEMP drive On OCM Network
-workDir = "/san1/tmp/DaveE/HHT/" # Temp drive On OCM Linux
+#workDir = "/san1/tmp/DaveE/HHT/" # Temp drive On OCM Linux
 #workDir = "/home/dave/Data/Hurricanes/" # On Zog
 dataDir = workDir + "Data/"  # Data location
 if TESTING:  
@@ -34,7 +34,7 @@ if TESTING:
 #     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-    resultsDir = workDir + "Results/T3/"  #  Location for final data
+    resultsDir = workDir + "Results/T1/"  #  Location for final data
 else:
     #h2AtlRaw = dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
     #h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
@@ -45,7 +45,7 @@ else:
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r06.csv" # IBTrACS CSC v03R06
 #    ibRaw = dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS ALL V03R05
 
-    resultsDir = workDir + "Results/Full03/"  #  Location for final data
+    resultsDir = workDir + "Results/Full01/"  #  Location for final data
 
 """ Choose to use either HURDAT2 data as the 'base' data layer (a new
     behaviour) or to use IBTrACS as the 'base' depending on the 
@@ -111,9 +111,8 @@ def getCat(nature, wind):
         Tropical Storm   TS      34   64    yellow      Solid    9      TS
     NOTE: As of 4/29/2015, the IBTrACS and HURDAT2 data files used a total
        of 13 different Nature names:
- 'ET', 'EX', 'NR', 'HU', 'DS', 'TD', 'SS', 'LO', 'PT', 'SD', 'DB', 'TS', 'MX'
+ 'DB', 'DS', 'ET', 'EX', 'HU', 'LO', 'MX', 'NR', 'PT', 'SD', 'SS', 'TD', 'TS'
 
-    
     Boundary values and naming conventions used here follow the FAQ from
     NOAA's Hurricane Research Division:
             http://www.aoml.noaa.gov/hrd/tcfaq/A5.html
@@ -160,15 +159,17 @@ def getCat(nature, wind):
         (nature[0] == 'H' or nature == 'TS' or nature == 'NR')):
         return catSuffix # It is a Hurricane strength and not extra-tropical
     elif (nature[0] == 'E'):
-        return 'EX_'+catSuffix
-    elif (nature[0] == 'T'):
+        return 'EX'
+    elif (nature[0] == 'T' or nature[0] == 'P'):
         return 'T'+catSuffix
-    elif (nature[0] == 'S'):
+    elif (nature[0] == 'S' or nature[0] == 'P'):
         return 'S'+catSuffix
-    elif (nature[0] == 'D'):
+    elif (nature[0] == 'D' or nature == 'LO'):
         return 'DS'
+    elif (nature[0] == 'N' or nature[0] == 'M' or nature == 'NR'):
+        return 'NR'
     else:
-        #print('ERROR in logic, Nature, wind, suffix = ',nature,wind, catSuffix)
+        print('ERROR in logic, Nature, wind, suffix = ',nature,wind, catSuffix)
         return 'T' + catSuffix
 """------------------------END OF getCat-------------------------------"""
 
@@ -182,7 +183,7 @@ class Storm(object):
         self.maxW = -1.
         self.minP = 9999.
         self.numSegs = 0
-        self.maxSaffir = ""
+        self.maxSaffir = "NR"
         self.enso = ""
         self.source = ""  # 0 = IBTrACS, 1 or 2 = HURDAT2 Atl, NEPAC
         self.segs = []
@@ -555,7 +556,7 @@ for i, storm in enumerate(allStorms):
         storm.minP = ""
         
 uniqueNatures = set(allNatures)
-print(uniqueNatures)
+print(sorted(uniqueNatures))
 
 stormTracks = shapefile.Writer(shapefile.POLYLINE) #One line & record per storm
 stormTracks.autobalance = 1 # make sure all shapes have records
@@ -565,7 +566,7 @@ stormFields = [['STORMID','C','56'],
                ['Disp_Name','C','81'],
                ['DDateRange','C','140'],
                ['BegObDate','D','10'],
-               ['EndObDate','D','20'],
+               ['EndObDate','D','10'],
                ['D_SaffirS','C','10'],
                ['FP_Years','C','10'],
                ['FP_Months','C','10'],
@@ -737,10 +738,33 @@ for i, storm in enumerate(allStorms):
     """ Extra values to match old (pre-2015) database structure """
     basin = rptLookup.setdefault(storm.name,Missing)[1]
     rptURL = rptLookup.setdefault(storm.name,Missing)[0]
-    dateRng = None
-    filtYrs = None
-    filtMons = None
-    filtMinP = None
+    strmStart = storm.segs[0].time
+    strmEnd = storm.segs[len(storm.segs)-1].time
+    
+    dateRng = dt.datetime.strftime(strmStart,'%b %d, %Y to ') + \
+              dt.datetime.strftime(strmEnd,'%b %d, %Y')
+    yr1 = strmStart.year
+    yr2 = strmEnd.year
+    filtYrs = str(strmStart.year)
+    if yr1 < yr2:
+        print('Storm ',storm.name,' spans years')
+        for iyr in range(strmStart.year + 1, strmEnd.year+1):
+            filtYrs = filtYrs + ', %d' %iyr
+    #filtYrs = 
+    filtMons = str(strmStart.month)
+    if strmEnd.month < strmStart.month: 
+        """ Storm spans years, so need all months from start through December, 
+            then from January through end."""
+        for imnth in range(strmStart.month+1,13):
+             filtMons = filtMons + ', %d' %imnth
+        for imnth in range(1,strmEnd.month+1):
+             filtMons = filtMons + ', %d' %imnth
+    else:
+        """ For storms within one year, list consecutive months. """
+        for imnth in range(strmStart.month+1,strmEnd.month+1):
+             filtMons = filtMons + ', %d' %imnth
+        
+    intensOrder = 0
     filtClimReg = None
     """   --------  End of Extra fields   ------------    """
     stormTracks.record(storm.uid,       # StormID
@@ -757,13 +781,14 @@ for i, storm in enumerate(allStorms):
                        storm.maxSaffir, # Filter Param. Saffir Simpson 2 letter
                        storm.minP,      # Filter Param: Minimum Pressure
                        rptURL,          # Storm Report URL
-                       filtMinP,        # Intensity Order (numeric)
+                       intensOrder,        # Intensity Order (numeric)
                        # Extra Attributes below
                        storm.numSegs,   # Number of segments in this Track
                        storm.enso)      # ENSO Flag
 """ Save Segments shapefile """
 #    thisName = resultsDir+storm.name.replace(":","_")+"_"+storm.startTime[:4]
 thisName = resultsDir+'AllSegments'
+print("allSegments.shapeType = ",allSegments.shapeType)
 
 allSegments.save(thisName)
 # create the PRJ file
@@ -773,7 +798,7 @@ prj.close()
 
 #stormTracks.append(track)
 """ Write out shapefiles """
-allStormFileName = resultsDir+'AllStorms'
+allStormFileName = resultsDir+'AllTracks'
 stormTracks.save(allStormFileName)
 # create the PRJ file
 prj = open("%s.prj" % allStormFileName, "w")
