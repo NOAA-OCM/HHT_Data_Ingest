@@ -17,7 +17,15 @@ import datetime as dt
 import ensoDownload
 import stormReportDownload
 """ Declarations and Parameters """
-TESTING = True
+WEBMERC = True
+TESTING = False
+""" Choose to use either HURDAT2 data as the 'base' data layer (a new
+    behaviour) or to use IBTrACS as the 'base' depending on the 
+    use_HURDAT variable: """
+use_HURDAT = True
+dupRange = 5  
+
+"""---------------------DEFINE WORKING DIRECTORIES------------------------"""
 #workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
 #workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
@@ -47,17 +55,23 @@ else:
 
     resultsDir = workDir + "Results/Full01/"  #  Location for final data
 
-""" Choose to use either HURDAT2 data as the 'base' data layer (a new
-    behaviour) or to use IBTrACS as the 'base' depending on the 
-    use_HURDAT variable: """
-use_HURDAT = False
-dupRange = 5  
 """--------------------------------------------------------------------"""
+if WEBMERC:
+    earthRadius = 6378137.0
+    earthCircumference = math.pi * 2.0 * earthRadius  
+    """ Define EPSG:3857 -- WGS84 Web Mercator (Auxiliary Sphere) Projection string 
+        http://spatialreference.org/ref/sr-org/7483/ """
+    #epsg = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs'
+    """ ESRI prj file below """
+    epsg = 'PROJCS["WGS 84 / Pseudo-Mercator",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["Degree",0.017453292519943295]],PROJECTION["Mercator"],PARAMETER["central_meridian",0],PARAMETER["scale_factor",1],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["Meter",1]]'
 
-""" Define WGS84 Geographic Projection string """
-epsg = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
-"""--------------------------------------------------------------------"""
+    """--------------------------------------------------------------------"""
+else:    
+    """ Define WGS84 Geographic Projection string """
+    epsg = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
+    """--------------------------------------------------------------------"""
   
+
 """ Get data for ENSO stage for each segment by referencing year and
  month against data set at:
  http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt
@@ -112,6 +126,10 @@ def getCat(nature, wind):
     NOTE: As of 4/29/2015, the IBTrACS and HURDAT2 data files used a total
        of 13 different Nature names:
  'DB', 'DS', 'ET', 'EX', 'HU', 'LO', 'MX', 'NR', 'PT', 'SD', 'SS', 'TD', 'TS'
+ IBTrACS uses just these in v03r06: 
+ ['DS', 'ET', 'MX', 'NR', 'SS', 'TS']
+ HURDAT2014/2015 uses:
+ ['DB', 'ET', 'EX', 'HU', 'LO', 'PT', 'SD', 'SS', 'TD', 'TS', 'TY', 'WV']
 
     Boundary values and naming conventions used here follow the FAQ from
     NOAA's Hurricane Research Division:
@@ -149,7 +167,7 @@ def getCat(nature, wind):
         catSuffix = 'H1'
     elif wind >= 34:
         catSuffix = 'S' # Storm
-    elif wind >= 20:
+    elif wind >= 0:
         catSuffix = 'D' # Depression or Disturbance
     else:
         return "NR"
@@ -159,18 +177,21 @@ def getCat(nature, wind):
         (nature[0] == 'H' or nature == 'TS' or nature == 'NR')):
         return catSuffix # It is a Hurricane strength and not extra-tropical
     elif (nature[0] == 'E'):
-        return 'EX'
+        return 'ET'
     elif (nature[0] == 'T' or nature[0] == 'P'):
         return 'T'+catSuffix
     elif (nature[0] == 'S' or nature[0] == 'P'):
         return 'S'+catSuffix
-    elif (nature[0] == 'D' or nature == 'LO'):
-        return 'DS'
+    elif (nature == 'DS'): # Needed for IBTrACS Tropical Depressions
+        return 'TD'        
+    elif (nature == 'DB' or nature == 'LO' or nature == 'WV'):
+        return 'NR' 
+        #return 'DS' # We don't use a DS category
     elif (nature[0] == 'N' or nature[0] == 'M' or nature == 'NR'):
         return 'NR'
     else:
         print('ERROR in logic, Nature, wind, suffix = ',nature,wind, catSuffix)
-        return 'T' + catSuffix
+        return 'Error_' + catSuffix
 """------------------------END OF getCat-------------------------------"""
 
 """ Create needed Objects """
@@ -201,7 +222,7 @@ class Observation(object):
             self.wsp = -1.0
         else:
             self.wsp = float(wsp)
-        if float(pres) <= 900:
+        if float(pres) <= 800.:
             self.pres = -1.0
         else:
             self.pres = float(pres)
@@ -212,7 +233,7 @@ class Segment(Observation):
         super().__init__(time,lat,lon,wsp,pres,nature)
         self.endLat = float(0.)
         self.endLon = float(0.)
-        self.saffir = None
+        self.saffir = ""
         self.enso = None
 
 """ Create an empty list to hold allStorms
@@ -519,7 +540,7 @@ for i, storm in enumerate(allStorms):
         if storm.segs[j].wsp > storm.maxW: # New Max found so update MaxW and SS
             storm.maxW = storm.segs[j].wsp
             storm.maxSaffir = storm.segs[j].saffir
-        if storm.segs[j].pres < storm.minP:
+        if storm.segs[j].pres < storm.minP and storm.segs[j].pres > 0:
             storm.minP = storm.segs[j].pres
 
     """ Now need to process the very last segment """ 
@@ -537,7 +558,7 @@ for i, storm in enumerate(allStorms):
     if storm.segs[jLast].wsp > storm.maxW: # New Max found so update MaxW and SS
         storm.maxW = storm.segs[jLast].wsp
         storm.maxSaffir = storm.segs[jLast].saffir
-    if storm.segs[jLast].pres < storm.minP:
+    if storm.segs[jLast].pres < storm.minP and storm.segs[jLast].pres > 0:
         storm.minP = storm.segs[jLast].pres
     """ Get data for ENSO stage for last segment by start time """
     try:
@@ -549,11 +570,11 @@ for i, storm in enumerate(allStorms):
 #    storm.segs[jLast].enso = ensoLookup[storm.segs[jLast].time[:7]]           
 
     """ If Maximum Wind and Minimum Pressure are still the inital values, 
-    replace them with NULLs """
+    replace them with MISSING VALUE FLAGS """
     if storm.maxW == -99.:
-        storm.maxW = ""
+        storm.maxW = "-1.0"
     if storm.minP == 9999.:
-        storm.minP = ""
+        storm.minP = "-1.0"
         
 uniqueNatures = set(allNatures)
 print(sorted(uniqueNatures))
@@ -606,57 +627,6 @@ segmentFields = [['STORMID','C','58'],
                  ['EndLat','C','20'],
                  ['EndLon','C','20']]
                  
-#print(stormFields[3], segmentFields[3])
-#segmentFields = ['UID','Name','Date','Wind','Press',
-#                 'Nature','SS_Scale','ENSO',
-#                 'StartLon','StartLat','EndLon','EndLat']
-
-#for i, storm in enumerate(allStorms):
-#    """ Create new single storm shapefile with each segment as a record
-#        One shapefile/storm """
-#    oneStorm = shapefile.Writer(shapefile.POLYLINE) # New shapefile
-#    oneStorm.autoBalance = 1 # make sure all shapes have records
-#    for attribute in segmentFields: # Add Fields for track shapefile
-#        oneStorm.field(attribute) 
-#        
-#    lineCoords = [] # Create list for stormTracks shapefile
-#        
-#    for thisSegment in storm.segs:
-#        """ Add coordinates to the Track shapefile list """
-#        lineCoords.append([[thisSegment.startLon, thisSegment.startLat],
-#                              [thisSegment.endLon, thisSegment.endLat]])
-#        """ Add this segment to the segments shapefile """
-#        oneStorm.poly(parts = [[[thisSegment.startLon, thisSegment.startLat],
-#                              [thisSegment.endLon, thisSegment.endLat]]])
-#        oneStorm.record(storm.uid,storm.name,
-#                        thisSegment.time,thisSegment.wsp,
-#                        thisSegment.pres,thisSegment.nature,
-#                        thisSegment.saffir,
-#                        thisSegment.enso,
-#                        thisSegment.startLon,thisSegment.startLat,
-#                        thisSegment.endLon,thisSegment.endLat
-#                        )
-##==============================================================================
-##     print(lineCoords)
-##     foo = input(" any key to continue")
-##==============================================================================
-#    """ Find ENSO state for start of the storm """
-#    storm.enso = ensoLookup.get(storm.segs[0].time[:7])
-#    """ Append track to stormTracks list """
-#    stormTracks.poly(shapeType=3, parts = lineCoords ) # Add the shape
-#    stormTracks.record(storm.uid,storm.name,storm.startTime, #Add it's attributes
-#                 storm.endTime,storm.maxW,storm.minP,storm.numSegs,
-#                 storm.maxSaffir,storm.enso)
-#    """ Save single storm shapefile """
-##    thisName = resultsDir+storm.name.replace(":","_")+"_"+storm.startTime[:4]
-#    thisName = resultsDir+storm.name.replace(":","_").replace(" ","_")
-#
-#    oneStorm.save(thisName)
-#    # create the PRJ file
-#    prj = open("%s.prj" % thisName, "w")
-#    prj.write(epsg)
-#    prj.close()   
-#
 
 """ New approach to put all SEGMENTS into one shapefile
     Create new single shapefile with every storm segment as a record
@@ -671,12 +641,33 @@ for i, storm in enumerate(allStorms):
     lineCoords = [] # Create list for stormTracks shapefile
         
     for thisSegment in storm.segs:
+        if WEBMERC:
+            sLon = earthRadius * thisSegment.startLon * math.pi/180
+            sLat = earthRadius * math.log( 
+                math.tan((math.pi/4) + ((thisSegment.startLat*math.pi/180)/2)))
+            eLon = earthRadius * thisSegment.endLon * math.pi/180
+            eLat = earthRadius * math.log( 
+                math.tan((math.pi/4) + ((thisSegment.endLat*math.pi/180)/2)))
+        else:
+            sLon = thisSegment.startLon
+            sLat = thisSegment.startLat
+            eLon = thisSegment.endLon
+            eLat = thisSegment.endLat
         """ Add coordinates to the Track shapefile list """
-        lineCoords.append([[thisSegment.startLon, thisSegment.startLat],
-                              [thisSegment.endLon, thisSegment.endLat]])
+        lineCoords.append([[sLon, sLat],
+                              [eLon, eLat]])
         """ Add this segment to the segments shapefile """
-        allSegments.poly(parts = [[[thisSegment.startLon, thisSegment.startLat],
-                              [thisSegment.endLon, thisSegment.endLat]]])
+        allSegments.poly(parts = [[[sLon, sLat],
+                              [eLon, eLat]]])
+                
+#==============================================================================
+#         """ Add coordinates to the Track shapefile list """
+#         lineCoords.append([[thisSegment.startLon, thisSegment.startLat],
+#                               [thisSegment.endLon, thisSegment.endLat]])
+#         """ Add this segment to the segments shapefile """
+#         allSegments.poly(parts = [[[thisSegment.startLon, thisSegment.startLat],
+#                               [thisSegment.endLon, thisSegment.endLat]]])
+#==============================================================================
         """ We need to putput these attributes: 
         ['STORMID','MSW_1min','BeginObHr','BeginLat','BEGINLON',
                  'Min_Press',
@@ -765,7 +756,7 @@ for i, storm in enumerate(allStorms):
              filtMons = filtMons + ', %d' %imnth
         
     intensOrder = 0
-    filtClimReg = None
+    filtClimReg = ""
     """   --------  End of Extra fields   ------------    """
     stormTracks.record(storm.uid,       # StormID
                        storm.maxW,      # Max Sustained WInd, 1 min ave period
@@ -787,7 +778,12 @@ for i, storm in enumerate(allStorms):
                        storm.enso)      # ENSO Flag
 """ Save Segments shapefile """
 #    thisName = resultsDir+storm.name.replace(":","_")+"_"+storm.startTime[:4]
-thisName = resultsDir+'AllSegments'
+if WEBMERC:
+    thisName = resultsDir+'AllSegments_WebMerc_2015'
+    allStormFileName = resultsDir+'AllTracks_WebMerc_2015'
+else:
+        thisName = resultsDir+'AllSegments_2015'
+        allStormFileName = resultsDir+'AllTracks_2015'
 print("allSegments.shapeType = ",allSegments.shapeType)
 
 allSegments.save(thisName)
@@ -798,7 +794,6 @@ prj.close()
 
 #stormTracks.append(track)
 """ Write out shapefiles """
-allStormFileName = resultsDir+'AllTracks'
 stormTracks.save(allStormFileName)
 # create the PRJ file
 prj = open("%s.prj" % allStormFileName, "w")
