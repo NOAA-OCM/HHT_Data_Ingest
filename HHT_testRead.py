@@ -21,7 +21,7 @@ import datetime as dt
 import ensoDownload
 import stormReportDownload
 """ Declarations and Parameters """
-WEBMERC = True
+WEBMERC = False
 TESTING = False
 """ Choose to use either HURDAT2 data as the 'base' data layer (a new
     behaviour) or to use IBTrACS as the 'base' depending on the 
@@ -57,7 +57,7 @@ else:
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r06.csv" # IBTrACS CSC v03R06
 #    ibRaw = dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS ALL V03R05
 
-    resultsDir = workDir + "Results/Full04/"  #  Location for final data
+    resultsDir = workDir + "Results/FullGeo02/"  #  Location for final data
 
 """--------------------------------------------------------------------"""
 if WEBMERC:
@@ -172,25 +172,24 @@ def getCat(nature, wind):
     elif wind >= 34:
         catSuffix = 'S' # Storm
     elif wind >= 0:
-        catSuffix = 'D' # Depression or Disturbance
+        catSuffix = 'D' # Depression
     else:
         return "NR"
         
     """ Now figure out what it is """
-    if (catSuffix[0] == 'H' and 
-        (nature[0] == 'H' or nature == 'TS' or nature == 'NR')):
+    if (catSuffix[0] == 'H' and (nature[0] == 'H' or nature[0] == 'T' 
+        or nature == 'NR' or nature == 'MX' )):
         return catSuffix # It is a Hurricane strength and not extra-tropical
     elif (nature[0] == 'E'):
         return 'ET'
     elif (nature[0] == 'T' or nature[0] == 'P'):
         return 'T'+catSuffix
-    elif (nature[0] == 'S' or nature[0] == 'P'):
+    elif (nature[0] == 'S'):
         return 'S'+catSuffix
     elif (nature == 'DS'): # Needed for IBTrACS Tropical Depressions
         return 'TD'        
     elif (nature == 'DB' or nature == 'LO' or nature == 'WV'):
-        return 'NR' 
-        #return 'DS' # We don't use a DS category
+        return 'DS' 
     elif (nature[0] == 'N' or nature[0] == 'M' or nature == 'NR'):
         return 'NR'
     else:
@@ -844,8 +843,8 @@ if WEBMERC:
 else:
      goodSegmentName = resultsDir+'goodSegments_2015'
      goodStormFileName = resultsDir+'goodTracks_2015'
-     goodSegmentName = resultsDir+'missingSegments_2015'
-     goodStormFileName = resultsDir+'missingTracks_2015'
+     missingSegmentName = resultsDir+'missingSegments_2015'
+     missingStormFileName = resultsDir+'missingTracks_2015'
 #print("goodSegments.shapeType = ",goodSegments.shapeType)
 
 goodSegments.save(goodSegmentName)
