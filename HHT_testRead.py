@@ -14,15 +14,19 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
              missingTracks and missingSegments.  The missing ones will be those
              with no valid pressure or wind speed records.  Most of those are 
              from the older storms.
+         2015-06-02: Randomizing segment order to make tool behave as 
+             previously with SQL process with segements in random order.
 """
 import math
+import random
 import shapefile
 import datetime as dt
 import ensoDownload
 import stormReportDownload
 """ Declarations and Parameters """
+SCRAMBLE = True
 WEBMERC = False
-TESTING = False
+TESTING = True
 """ Choose to use either HURDAT2 data as the 'base' data layer (a new
     behaviour) or to use IBTrACS as the 'base' depending on the 
     use_HURDAT variable: """
@@ -46,7 +50,7 @@ if TESTING:
 #     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-    resultsDir = workDir + "Results/T1/"  #  Location for final data
+    resultsDir = workDir + "Results/TRand1/"  #  Location for final data
 else:
     #h2AtlRaw = dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
     #h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
@@ -620,6 +624,7 @@ stormFields = [['STORMID','C','56'],
 # stormFields = ['UID','Name','StartDate','EndDate','MaxWind','MinPress',
 #                'NumObs','MaxSaffir','ENSO']
 #==============================================================================
+""" Create and initalize the fields for the needed Tracks Shapefiles """
 goodTracks = shapefile.Writer(shapefile.POLYLINE) #One line & record per storm
 goodTracks.autobalance = 1 # make sure all shapes have records
 missingTracks = shapefile.Writer(shapefile.POLYLINE) #One line & record per storm
@@ -648,9 +653,8 @@ segmentFields = [['STORMID','C','58'],
                  ['ENSO','C','20'],
                  ['EndLat','C','20'],
                  ['EndLon','C','20']]               
-""" New approach to put all SEGMENTS into one shapefile
-    Create new single shapefile with every storm segment as a record
-    Only one shapefile for allstorm """
+
+""" Create and initalize the fields for the needed Tracks Shapefiles """
 goodSegments = shapefile.Writer(shapefile.POLYLINE) # New shapefile
 goodSegments.autoBalance = 1 # make sure all shapes have records
 missingSegments = shapefile.Writer(shapefile.POLYLINE) # New shapefile
@@ -659,7 +663,17 @@ for attribute in segmentFields: # Add Fields for track shapefile
    # print(attribute)
     goodSegments.field(attribute[0],attribute[1],attribute[2]) 
     missingSegments.field(attribute[0],attribute[1],attribute[2]) 
-    
+"""Lists needed for SCRAMBLING Segemnts """
+goodSegCoords = []
+goodSegParams = []
+goodSegNum = 0
+goodSegIndx = []
+
+missingSegCoords = []
+missingSegParams = []
+missingSegNum = 0
+missingSegIndx= []
+       
 for i, storm in enumerate(allStorms):
                 
     lineCoords = [] # Create list for stormTracks shapefile
@@ -702,8 +716,12 @@ for i, storm in enumerate(allStorms):
   
         """ Add this segment's data to the appropriate segments shapefile """
         if goodStorm:
-            goodSegments.poly(parts = [[[sLon, sLat],[eLon, eLat]]])
-            goodSegments.record(storm.uid,           # Storm ID
+#==============================================================================
+#             goodSegments.poly(parts = [[[sLon, sLat],[eLon, eLat]]])
+#             goodSegments.record(storm.uid,           # Storm ID
+#==============================================================================
+            goodSegCoords.append([[sLon, sLat],[eLon, eLat]])
+            goodSegParams.append([storm.uid,           # Storm ID
                            thisSegment.wsp,     # Max. Sustained Wind
                            begObsHour,          # Begin Observation Hour Why?
                            thisSegment.startLat,# Begin Lat
@@ -721,12 +739,18 @@ for i, storm in enumerate(allStorms):
                            thisSegment.nature,  # Nature (not quite SS)
                            thisSegment.enso,    # ENSO Flag
                            thisSegment.endLat,  # End Lat
-                           thisSegment.endLon )  # End Long.
+                           thisSegment.endLon] )  # End Long.                          
+            goodSegIndx.append(goodSegNum)
+            goodSegNum += 1
                     
         else:
-            missingSegments.poly(parts = [[[sLon, sLat],[eLon, eLat]]])
-            missingSegments.record(storm.uid,           # Storm ID
-                           thisSegment.wsp,     # Max. Sustained Wind
+#==============================================================================
+#             missingSegments.poly(parts = [[[sLon, sLat],[eLon, eLat]]])
+#             missingSegments.record(storm.uid,           # Storm ID
+#==============================================================================
+            missingSegCoords.append([[sLon, sLat],[eLon, eLat]])
+            missingSegParams.append([storm.uid,           # Storm ID
+                            thisSegment.wsp,     # Max. Sustained Wind
                            begObsHour,          # Begin Observation Hour Why?
                            thisSegment.startLat,# Begin Lat
                            thisSegment.startLon,# Begin Long.
@@ -743,7 +767,9 @@ for i, storm in enumerate(allStorms):
                            thisSegment.nature,  # Nature (not quite SS)
                            thisSegment.enso,    # ENSO Flag
                            thisSegment.endLat,  # End Lat
-                           thisSegment.endLon )  # End Long.
+                           thisSegment.endLon] )  # End Long.
+            missingSegIndx.append(missingSegNum)
+            missingSegNum += 1
 
 #==============================================================================
 #     print(lineCoords)
@@ -832,6 +858,20 @@ for i, storm in enumerate(allStorms):
                        # Extra Attributes below
                        storm.numSegs,   # Number of segments in this Track
                        storm.enso)      # ENSO Flag
+""" All done, so scramble Segments if needed.  
+    Then populate Segments shapefile"""
+if (SCRAMBLE):
+    random.shuffle(goodSegIndx)
+    random.shuffle(missingSegIndx)   
+for i in goodSegIndx:
+    print(goodSegCoords[i])
+    goodSegments.poly(parts = goodSegCoords[i])
+    goodSegments.record(goodSegParams[i])
+
+for i in missingSegIndx:
+    missingSegments.poly(parts = missingSegCoords[i])
+    missingSegments.record(missingSegParams[i])
+
         
 """ Save shapefile """
 #    thisName = resultsDir+storm.name.replace(":","_")+"_"+storm.startTime[:4]
