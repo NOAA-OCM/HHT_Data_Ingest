@@ -26,7 +26,8 @@ import stormReportDownload
 """ Declarations and Parameters """
 SCRAMBLE = True
 WEBMERC = False
-TESTING = True
+BREAK180 = False
+TESTING = False
 """ Choose to use either HURDAT2 data as the 'base' data layer (a new
     behaviour) or to use IBTrACS as the 'base' depending on the 
     use_HURDAT variable: """
@@ -50,7 +51,7 @@ if TESTING:
 #     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-    resultsDir = workDir + "Results/TRand1/"  #  Location for final data
+    resultsDir = workDir + "Results/TRand3/"  #  Location for final data
 else:
     #h2AtlRaw = dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
     #h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
@@ -64,6 +65,16 @@ else:
     resultsDir = workDir + "Results/FullGeo02/"  #  Location for final data
 
 """--------------------------------------------------------------------"""
+
+""" Define EPSG code for needed projection.  Either Manually or using 
+    modivfication of this:
+    
+    def getPRJwkt(epsg):
+        import urllib
+        f=urllib.urlopen("http://spatialreference.org/ref/epsg/{0}/prettywkt/".format(epsg))
+        return (f.read())
+    Whick is from comments in: https://code.google.com/p/pyshp/wiki/PyShpDocs
+"""
 if WEBMERC:
     earthRadius = 6378137.0
     earthCircumference = math.pi * 2.0 * earthRadius  
@@ -72,8 +83,6 @@ if WEBMERC:
     epsg = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs'
     """ ESRI prj file below """
     #epsg = 'PROJCS["WGS 84 / Pseudo-Mercator",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["Degree",0.017453292519943295]],PROJECTION["Mercator"],PARAMETER["central_meridian",0],PARAMETER["scale_factor",1],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["Meter",1]]'
-
-    """--------------------------------------------------------------------"""
 else:    
     """ Define WGS84 Geographic Projection string """
     epsg = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
@@ -541,13 +550,16 @@ for i, storm in enumerate(allStorms):
         allNatures.append(storm.segs[j].nature)
         """ --- ending Lat and Lon for each segment"""
         storm.segs[j].endLat = storm.segs[j+1].startLat
-        """ Make sure LONGITUDE do not change sign across the +-180 line"""
+        """ Make sure LONGITUDE does not change sign across the +-180 line"""
         if abs(storm.segs[j].startLon - storm.segs[j+1].startLon) > 270.:
-            """ Lon crosses 180, so adjust all following
-            startLons so it does not """
-            storm.segs[j+1].startLon = (
-                math.copysign(360.0,storm.segs[j].startLon)
-                + storm.segs[j+1].startLon)
+            """ Lon crosses 180, so """
+            if (BREAK180):
+                """ Create 2 records, spanning the break """
+            else:
+                """  OR adjust all following startLons so it does not """
+                storm.segs[j+1].startLon = (
+                    math.copysign(360.0,storm.segs[j].startLon)
+                    + storm.segs[j+1].startLon)
         storm.segs[j].endLon = storm.segs[j+1].startLon
         """ --- Saffir-Simpson value for each segment"""
         storm.segs[j].saffir = getCat(storm.segs[j].nature, 
@@ -570,8 +582,8 @@ for i, storm in enumerate(allStorms):
     starting location, but offset by 0.01 degrees.  
     This allows for the creation of a valid attributed line for every
     actual observation."""   
-    storm.segs[jLast].endLat = float(storm.segs[jLast].startLat + 0.01)
-    storm.segs[jLast].endLon = float(storm.segs[jLast].startLon + 0.01)
+    storm.segs[jLast].endLat = float(storm.segs[jLast].startLat + 0.00001)
+    storm.segs[jLast].endLon = float(storm.segs[jLast].startLon + 0.00001)
    
     """ --- Saffir-Simpson value for each segment"""
     storm.segs[jLast].saffir = getCat(storm.segs[jLast].nature, 
@@ -663,7 +675,7 @@ for attribute in segmentFields: # Add Fields for track shapefile
    # print(attribute)
     goodSegments.field(attribute[0],attribute[1],attribute[2]) 
     missingSegments.field(attribute[0],attribute[1],attribute[2]) 
-"""Lists needed for SCRAMBLING Segemnts """
+"""Lists needed for SCRAMBLING Segments """
 goodSegCoords = []
 goodSegParams = []
 goodSegNum = 0
@@ -676,7 +688,7 @@ missingSegIndx= []
        
 for i, storm in enumerate(allStorms):
                 
-    lineCoords = [] # Create list for stormTracks shapefile
+    trackCoords = [] # Create list for stormTracks shapefile
     """ Find out if this hurricane has any valid pressure or wind speed obs """
     if (float(storm.minP) < 0.0 and float(storm.maxW) < 0.0 ):
         goodStorm = False
@@ -696,11 +708,13 @@ for i, storm in enumerate(allStorms):
             sLat = thisSegment.startLat
             eLon = thisSegment.endLon
             eLat = thisSegment.endLat
+        segCoords = [[[sLon, sLat],[eLon, eLat]]]
+        """ Break at 180 or Don't as needed """
         """ Add coordinates to the Track shapefile list """
-        lineCoords.append([[sLon, sLat],
+        trackCoords.append([[sLon, sLat],
                               [eLon, eLat]])
                 
-        """ We need to putput these attributes: 
+        """ We need to output these attributes: 
         ['STORMID','MSW_1min','BeginObHr','BeginLat','BEGINLON',
                  'Min_Press',
                  'Basin','SS_Scale','DateNTime','DMSW_1min',
@@ -717,10 +731,10 @@ for i, storm in enumerate(allStorms):
         """ Add this segment's data to the appropriate segments shapefile """
         if goodStorm:
 #==============================================================================
-#             goodSegments.poly(parts = [[[sLon, sLat],[eLon, eLat]]])
+#             goodSegments.poly(parts = segCoords)
 #             goodSegments.record(storm.uid,           # Storm ID
 #==============================================================================
-            goodSegCoords.append([[sLon, sLat],[eLon, eLat]])
+            goodSegCoords.append(segCoords)
             goodSegParams.append([storm.uid,           # Storm ID
                            thisSegment.wsp,     # Max. Sustained Wind
                            begObsHour,          # Begin Observation Hour Why?
@@ -745,10 +759,10 @@ for i, storm in enumerate(allStorms):
                     
         else:
 #==============================================================================
-#             missingSegments.poly(parts = [[[sLon, sLat],[eLon, eLat]]])
+#             missingSegments.poly(parts = segCoords)
 #             missingSegments.record(storm.uid,           # Storm ID
 #==============================================================================
-            missingSegCoords.append([[sLon, sLat],[eLon, eLat]])
+            missingSegCoords.append(segCoords)
             missingSegParams.append([storm.uid,           # Storm ID
                             thisSegment.wsp,     # Max. Sustained Wind
                            begObsHour,          # Begin Observation Hour Why?
@@ -772,7 +786,7 @@ for i, storm in enumerate(allStorms):
             missingSegNum += 1
 
 #==============================================================================
-#     print(lineCoords)
+#     print(trackCoords)
 #     foo = input(" any key to continue")
 #==============================================================================
     """ Find ENSO state for start of the storm """
@@ -818,7 +832,7 @@ for i, storm in enumerate(allStorms):
     """ Append track to appropriate stormTracks list """
     if goodStorm:
         numGoodObs += 1
-        goodTracks.poly(shapeType=3, parts = lineCoords ) # Add the shape
+        goodTracks.poly(shapeType=3, parts = trackCoords ) # Add the shape
         goodTracks.record(storm.uid,       # StormID
                        storm.maxW,      # Max Sustained WInd, 1 min ave period
                        basin,           # Basin
@@ -839,7 +853,7 @@ for i, storm in enumerate(allStorms):
                        storm.enso)      # ENSO Flag
     else:
         numAllMissing += 1
-        missingTracks.poly(shapeType=3, parts = lineCoords ) # Add the shape
+        missingTracks.poly(shapeType=3, parts = trackCoords ) # Add the shape
         missingTracks.record(storm.uid,       # StormID
                        storm.maxW,      # Max Sustained WInd, 1 min ave period
                        basin,           # Basin
@@ -864,13 +878,18 @@ if (SCRAMBLE):
     random.shuffle(goodSegIndx)
     random.shuffle(missingSegIndx)   
 for i in goodSegIndx:
-    print(goodSegCoords[i])
+#==============================================================================
+#     print('i, Regular: ',i, goodSegCoords[i])
+#     print('Unpacked: ',*goodSegCoords[i])
+#==============================================================================
+    tmp = goodSegCoords[i]
     goodSegments.poly(parts = goodSegCoords[i])
-    goodSegments.record(goodSegParams[i])
+    goodSegments.record(*goodSegParams[i])
 
 for i in missingSegIndx:
+    tmp = missingSegCoords[i]
     missingSegments.poly(parts = missingSegCoords[i])
-    missingSegments.record(missingSegParams[i])
+    missingSegments.record(*missingSegParams[i])
 
         
 """ Save shapefile """
