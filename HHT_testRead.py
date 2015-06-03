@@ -550,16 +550,18 @@ for i, storm in enumerate(allStorms):
         allNatures.append(storm.segs[j].nature)
         """ --- ending Lat and Lon for each segment"""
         storm.segs[j].endLat = storm.segs[j+1].startLat
-        """ Make sure LONGITUDE does not change sign across the +-180 line"""
-        if abs(storm.segs[j].startLon - storm.segs[j+1].startLon) > 270.:
-            """ Lon crosses 180, so """
-            if (BREAK180):
-                """ Create 2 records, spanning the break """
-            else:
-                """  OR adjust all following startLons so it does not """
-                storm.segs[j+1].startLon = (
-                    math.copysign(360.0,storm.segs[j].startLon)
-                    + storm.segs[j+1].startLon)
+#==============================================================================
+#         """ Make sure LONGITUDE does not change sign across the +-180 line"""
+#         if abs(storm.segs[j].startLon - storm.segs[j+1].startLon) > 270.:
+#             """ Lon crosses 180, so """
+#             if (BREAK180):
+#                 """ Create 2 records, spanning the break """
+#             else:
+#                 """  OR adjust all following startLons so it does not """
+#                 storm.segs[j+1].startLon = (
+#                     math.copysign(360.0,storm.segs[j].startLon)
+#                     + storm.segs[j+1].startLon)
+#==============================================================================
         storm.segs[j].endLon = storm.segs[j+1].startLon
         """ --- Saffir-Simpson value for each segment"""
         storm.segs[j].saffir = getCat(storm.segs[j].nature, 
@@ -695,24 +697,67 @@ for i, storm in enumerate(allStorms):
     else:
         goodStorm = True
     for thisSegment in storm.segs:
-        """ Project to web mercator if need, otherwise just geographic"""
-        if WEBMERC:
-            sLon = earthRadius * thisSegment.startLon * math.pi/180
-            sLat = earthRadius * math.log( 
-                math.tan((math.pi/4) + ((thisSegment.startLat*math.pi/180)/2)))
-            eLon = earthRadius * thisSegment.endLon * math.pi/180
-            eLat = earthRadius * math.log( 
-                math.tan((math.pi/4) + ((thisSegment.endLat*math.pi/180)/2)))
-        else:
-            sLon = thisSegment.startLon
-            sLat = thisSegment.startLat
-            eLon = thisSegment.endLon
-            eLat = thisSegment.endLat
-        segCoords = [[[sLon, sLat],[eLon, eLat]]]
-        """ Break at 180 or Don't as needed """
-        """ Add coordinates to the Track shapefile list """
-        trackCoords.append([[sLon, sLat],
-                              [eLon, eLat]])
+#==============================================================================
+#                 """ Make sure LONGITUDE does not change sign across the +-180 line"""
+#         if abs(storm.segs[j].startLon - storm.segs[j+1].startLon) > 270.:
+#             """ Lon crosses 180, so """
+#             if (BREAK180):
+#                 """ Create 2 records, spanning the break """
+#             else:
+#                 """  OR adjust all following startLons so it does not """
+#                 storm.segs[j+1].startLon = (
+#                     math.copysign(360.0,storm.segs[j].startLon)
+#                     + storm.segs[j+1].startLon)
+#         storm.segs[j].endLon = storm.segs[j+1].startLon
+#==============================================================================
+        """ Check for segments spanning the 180 degree line. Correct if they do. """
+        if abs(thisSegment.startLon - thisSegment.endLon) > 270.:
+            """ Project to web mercator if need, otherwise just geographic"""
+            if WEBMERC:
+                sLon = earthRadius * thisSegment.startLon * math.pi/180
+                sLat = earthRadius * math.log( 
+                    math.tan((math.pi/4) + (
+                    (thisSegment.startLat*math.pi/180)/2)))
+                eLon = earthRadius * thisSegment.endLon * math.pi/180
+                eLat = earthRadius * math.log( 
+                    math.tan((math.pi/4) + (
+                    (thisSegment.endLat*math.pi/180)/2)))
+                msLon = 180.
+                meLon = 180.
+                mLat = eLat
+            else:
+                sLon = thisSegment.startLon
+                sLat = thisSegment.startLat
+                eLon = thisSegment.endLon
+                eLat = thisSegment.endLat
+                msLon = 180.
+                meLon = 180.
+                mLat = eLat
+#            segCoords = [[[sLon, sLat],[eLon, eLat]]]
+            segCoords = [[[sLon, sLat],[msLon,mLat]],
+                         [[meLon,mLat],[eLon, eLat]]]
+            """ Break at 180 or Don't as needed """
+            """ Add coordinates to the Track shapefile list """
+            trackCoords.append([[[sLon, sLat],[msLon,mLat]],
+                               [[meLon,mLat],[eLon, eLat]]])
+        else:               
+            """ Project to web mercator if need, otherwise just geographic"""
+            if WEBMERC:
+                sLon = earthRadius * thisSegment.startLon * math.pi/180
+                sLat = earthRadius * math.log( 
+                    math.tan((math.pi/4) + ((thisSegment.startLat*math.pi/180)/2)))
+                eLon = earthRadius * thisSegment.endLon * math.pi/180
+                eLat = earthRadius * math.log( 
+                    math.tan((math.pi/4) + ((thisSegment.endLat*math.pi/180)/2)))
+            else:
+                sLon = thisSegment.startLon
+                sLat = thisSegment.startLat
+                eLon = thisSegment.endLon
+                eLat = thisSegment.endLat
+            segCoords = [[[sLon, sLat],[eLon, eLat]]]
+            """ Break at 180 or Don't as needed """
+            """ Add coordinates to the Track shapefile list """
+            trackCoords.append([[sLon, sLat],[eLon, eLat]])
                 
         """ We need to output these attributes: 
         ['STORMID','MSW_1min','BeginObHr','BeginLat','BEGINLON',
