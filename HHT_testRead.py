@@ -25,7 +25,7 @@ import ensoDownload
 import stormReportDownload
 """ Declarations and Parameters """
 SCRAMBLE = True
-WEBMERC = False
+WEBMERC = True
 BREAK180 = False
 TESTING = True
 """ Choose to use either HURDAT2 data as the 'base' data layer (a new
@@ -724,7 +724,7 @@ for i, storm in enumerate(allStorms):
                     (thisSegment.endLat*math.pi/180)/2)))
                 mwLon = (math.copysign(1.0,thisSegment.startLon) 
                         * earthRadius * math.pi)
-                meLon = (math.copysign(1.0,thisSegment.endon) 
+                meLon = (math.copysign(1.0,thisSegment.endLon) 
                         * earthRadius * math.pi)
                 """ Interpolate Lat to 180 """
                 deltaLon = thisSegment.startLon - (
