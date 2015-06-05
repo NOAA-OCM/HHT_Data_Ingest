@@ -27,7 +27,7 @@ import stormReportDownload
 SCRAMBLE = True
 WEBMERC = False
 BREAK180 = False
-TESTING = False
+TESTING = True
 """ Choose to use either HURDAT2 data as the 'base' data layer (a new
     behaviour) or to use IBTrACS as the 'base' depending on the 
     use_HURDAT variable: """
@@ -67,13 +67,13 @@ else:
 """--------------------------------------------------------------------"""
 
 """ Define EPSG code for needed projection.  Either Manually or using 
-    modivfication of this:
+    modification of this:
     
     def getPRJwkt(epsg):
         import urllib
         f=urllib.urlopen("http://spatialreference.org/ref/epsg/{0}/prettywkt/".format(epsg))
         return (f.read())
-    Whick is from comments in: https://code.google.com/p/pyshp/wiki/PyShpDocs
+    Which is from comments in: https://code.google.com/p/pyshp/wiki/PyShpDocs
 """
 if WEBMERC:
     earthRadius = 6378137.0
@@ -722,23 +722,35 @@ for i, storm in enumerate(allStorms):
                 eLat = earthRadius * math.log( 
                     math.tan((math.pi/4) + (
                     (thisSegment.endLat*math.pi/180)/2)))
-                msLon = 180.
-                meLon = 180.
-                mLat = eLat
+                mwLon = (math.copysign(1.0,thisSegment.startLon) 
+                        * earthRadius * math.pi)
+                meLon = (math.copysign(1.0,thisSegment.endon) 
+                        * earthRadius * math.pi)
+                """ Interpolate Lat to 180 """
+                deltaLon = thisSegment.startLon - (
+                (math.copysign(360.0,thisSegment.startLon)
+                     + thisSegment.endLon)) # Makes Start & end lons same sign
+                mLat = sLat + (sLat - eLat)* ((thisSegment.startLon - 180)/
+                        deltaLon )
             else:
                 sLon = thisSegment.startLon
                 sLat = thisSegment.startLat
                 eLon = thisSegment.endLon
                 eLat = thisSegment.endLat
-                msLon = 180.
-                meLon = 180.
-                mLat = eLat
+                mwLon = math.copysign(180.0,sLon)
+                meLon = math.copysign(180.0,eLon)
+                """ Interpolate Lat to 180 """
+                deltaLon = thisSegment.startLon - (
+                (math.copysign(360.0,thisSegment.startLon)
+                     + thisSegment.endLon)) # Makes Start & end lons same sign
+                mLat = sLat + (sLat - eLat)* ((thisSegment.startLon - 180)/
+                        deltaLon )
 #            segCoords = [[[sLon, sLat],[eLon, eLat]]]
-            segCoords = [[[sLon, sLat],[msLon,mLat]],
+            segCoords = [[[sLon, sLat],[mwLon,mLat]],
                          [[meLon,mLat],[eLon, eLat]]]
             """ Break at 180 or Don't as needed """
             """ Add coordinates to the Track shapefile list """
-            trackCoords.append([[[sLon, sLat],[msLon,mLat]],
+            trackCoords.append([[[sLon, sLat],[mwLon,mLat]],
                                [[meLon,mLat],[eLon, eLat]]])
         else:               
             """ Project to web mercator if need, otherwise just geographic"""
