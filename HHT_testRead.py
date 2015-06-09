@@ -25,7 +25,7 @@ import ensoDownload
 import stormReportDownload
 """ Declarations and Parameters """
 SCRAMBLE = True
-WEBMERC = True
+WEBMERC = False
 BREAK180 = False
 TESTING = True
 """ Choose to use either HURDAT2 data as the 'base' data layer (a new
@@ -51,7 +51,7 @@ if TESTING:
 #     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-    resultsDir = workDir + "Results/TRand3/"  #  Location for final data
+    resultsDir = workDir + "Results/TRand6/"  #  Location for final data
 else:
     #h2AtlRaw = dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
     #h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
@@ -545,24 +545,30 @@ for i, storm in enumerate(allStorms):
     """loop through segments, skipping last"""
     storm.numSegs = len(storm.segs)
     jLast = storm.numSegs-1
-    for j in range(0,jLast):
+    j = -1  # Make a new counter in case we add segments by splitting around 180
+    for jj in range(0,jLast):
+        j+= 1 
         """ For each segment in the storm find: """
         allNatures.append(storm.segs[j].nature)
-        """ --- ending Lat and Lon for each segment"""
+
+        """ Find end Lat and Lon for each segment, correcting if needed"""
+        """ Make sure LONGITUDE does not change sign across the +-180 line
+            Fix this by adjusting the STARTLON of the next segment """
+        if abs(storm.segs[j].startLon - storm.segs[j+1].startLon) > 270.:
+            """ Lon crosses 180, so """
+            if (not BREAK180):
+                """  Adjust all following startLons so it does not """
+                storm.segs[j+1].startLon = (
+                    math.copysign(360.0,storm.segs[j].startLon)
+                    + storm.segs[j+1].startLon)
+                print('Adjusting')
+        """ put adjusted or NOT adjusted start lat & lon at (j+1) 
+            in end lat/lon for (j) """
         storm.segs[j].endLat = storm.segs[j+1].startLat
-#==============================================================================
-#         """ Make sure LONGITUDE does not change sign across the +-180 line"""
-#         if abs(storm.segs[j].startLon - storm.segs[j+1].startLon) > 270.:
-#             """ Lon crosses 180, so """
-#             if (BREAK180):
-#                 """ Create 2 records, spanning the break """
-#             else:
-#                 """  OR adjust all following startLons so it does not """
-#                 storm.segs[j+1].startLon = (
-#                     math.copysign(360.0,storm.segs[j].startLon)
-#                     + storm.segs[j+1].startLon)
-#==============================================================================
         storm.segs[j].endLon = storm.segs[j+1].startLon
+        """ ---------------------END 180 Stuff ----------------------------"""
+
+
         """ --- Saffir-Simpson value for each segment"""
         storm.segs[j].saffir = getCat(storm.segs[j].nature, 
                                     (storm.segs[j].wsp))
@@ -662,7 +668,8 @@ segmentFields = [['STORMID','C','58'],
                  ['DispName','C','150'],
                  ['DispDate','C','20'],
                  ['DMin_Press','C','10'],
-                 ['DDateNTime','C','20'], #End of previous attributes
+                 ['DDateNTime','C','20'],
+                 ['SegOrder','N','20'],#End of previous attributes
                  ['Nature','C','20'],
                  ['ENSO','C','20'],
                  ['EndLat','C','20'],
@@ -712,6 +719,7 @@ for i, storm in enumerate(allStorms):
 #==============================================================================
         """ Check for segments spanning the 180 degree line. Correct if they do. """
         if abs(thisSegment.startLon - thisSegment.endLon) > 270.:
+            print('AGAIN Crossing 180')
             """ Project to web mercator if need, otherwise just geographic"""
             if WEBMERC:
                 sLon = earthRadius * thisSegment.startLon * math.pi/180
@@ -748,7 +756,7 @@ for i, storm in enumerate(allStorms):
 #            segCoords = [[[sLon, sLat],[eLon, eLat]]]
             segCoords = [[[sLon, sLat],[mwLon,mLat]],
                          [[meLon,mLat],[eLon, eLat]]]
-            """ Break at 180 or Don't as needed """
+ 
             """ Add coordinates to the Track shapefile list """
             trackCoords.append([[[sLon, sLat],[mwLon,mLat]],
                                [[meLon,mLat],[eLon, eLat]]])
@@ -767,7 +775,7 @@ for i, storm in enumerate(allStorms):
                 eLon = thisSegment.endLon
                 eLat = thisSegment.endLat
             segCoords = [[[sLon, sLat],[eLon, eLat]]]
-            """ Break at 180 or Don't as needed """
+
             """ Add coordinates to the Track shapefile list """
             trackCoords.append([[sLon, sLat],[eLon, eLat]])
                 
@@ -806,6 +814,7 @@ for i, storm in enumerate(allStorms):
                            dispDate,            # Display Date
                            thisSegment.pres,    # Display Min Pressure
                            dispDateTime,        # Display Date and Time
+                           goodSegNum,          # Segment Order, a unique ID
                            # End of Previous Attributes
                            thisSegment.nature,  # Nature (not quite SS)
                            thisSegment.enso,    # ENSO Flag
@@ -834,6 +843,7 @@ for i, storm in enumerate(allStorms):
                            dispDate,            # Display Date
                            thisSegment.pres,    # Display Min Pressure
                            dispDateTime,        # Display Date and Time
+                         3.0e9+missingSegNum,   # Segment Order, a unique ID
                            # End of Previous Attributes
                            thisSegment.nature,  # Nature (not quite SS)
                            thisSegment.enso,    # ENSO Flag
