@@ -25,9 +25,9 @@ import ensoDownload
 import stormReportDownload
 """ Declarations and Parameters """
 SCRAMBLE = True
-WEBMERC = False
-BREAK180 = False
-TESTING = True
+WEBMERC = True
+BREAK180 = True
+TESTING = False
 """ Choose to use either HURDAT2 data as the 'base' data layer (a new
     behaviour) or to use IBTrACS as the 'base' depending on the 
     use_HURDAT variable: """
@@ -51,7 +51,7 @@ if TESTING:
 #     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-    resultsDir = workDir + "Results/TRand6/"  #  Location for final data
+    resultsDir = workDir + "Results/TRand1/"  #  Location for final data
 else:
     #h2AtlRaw = dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
     #h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
@@ -62,7 +62,7 @@ else:
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r06.csv" # IBTrACS CSC v03R06
 #    ibRaw = dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS ALL V03R05
 
-    resultsDir = workDir + "Results/FullGeo02/"  #  Location for final data
+    resultsDir = workDir + "Results/FullMerc1/"  #  Location for final data
 
 """--------------------------------------------------------------------"""
 
@@ -557,7 +557,8 @@ for i, storm in enumerate(allStorms):
         if abs(storm.segs[j].startLon - storm.segs[j+1].startLon) > 270.:
             """ Lon crosses 180, so """
             if (not BREAK180):
-                """  Adjust all following startLons so it does not """
+                """ Adjust next startLons so sign stays consistent. This gets
+                    all following lons as we iterate through them. """
                 storm.segs[j+1].startLon = (
                     math.copysign(360.0,storm.segs[j].startLon)
                     + storm.segs[j+1].startLon)
@@ -717,30 +718,15 @@ for i, storm in enumerate(allStorms):
 #                     + storm.segs[j+1].startLon)
 #         storm.segs[j].endLon = storm.segs[j+1].startLon
 #==============================================================================
-        """ Check for segments spanning the 180 degree line. Correct if they do. """
+        """ Check for segments spanning the 180 degree line. If they do
+            and BREAK180 is true, create multi-part segments. """
         if abs(thisSegment.startLon - thisSegment.endLon) > 270.:
-            print('AGAIN Crossing 180')
-            """ Project to web mercator if need, otherwise just geographic"""
-            if WEBMERC:
-                sLon = earthRadius * thisSegment.startLon * math.pi/180
-                sLat = earthRadius * math.log( 
-                    math.tan((math.pi/4) + (
-                    (thisSegment.startLat*math.pi/180)/2)))
-                eLon = earthRadius * thisSegment.endLon * math.pi/180
-                eLat = earthRadius * math.log( 
-                    math.tan((math.pi/4) + (
-                    (thisSegment.endLat*math.pi/180)/2)))
-                mwLon = (math.copysign(1.0,thisSegment.startLon) 
-                        * earthRadius * math.pi)
-                meLon = (math.copysign(1.0,thisSegment.endLon) 
-                        * earthRadius * math.pi)
-                """ Interpolate Lat to 180 """
-                deltaLon = thisSegment.startLon - (
-                (math.copysign(360.0,thisSegment.startLon)
-                     + thisSegment.endLon)) # Makes Start & end lons same sign
-                mLat = sLat + (sLat - eLat)* ((thisSegment.startLon - 180)/
-                        deltaLon )
-            else:
+#==============================================================================
+#             print('AGAIN Crossing 180')
+#==============================================================================
+            if BREAK180:
+                """ Find new broken coordinates, then convert to webmerc if 
+                    needed """
                 sLon = thisSegment.startLon
                 sLat = thisSegment.startLat
                 eLon = thisSegment.endLon
@@ -751,15 +737,36 @@ for i, storm in enumerate(allStorms):
                 deltaLon = thisSegment.startLon - (
                 (math.copysign(360.0,thisSegment.startLon)
                      + thisSegment.endLon)) # Makes Start & end lons same sign
-                mLat = sLat + (sLat - eLat)* ((thisSegment.startLon - 180)/
+                mLat = sLat + (sLat - eLat)* ((thisSegment.startLon - 
+                    math.copysign(180.0,thisSegment.startLon))/
                         deltaLon )
-#            segCoords = [[[sLon, sLat],[eLon, eLat]]]
+#==============================================================================
+#                 print('sLon, mwLon, meLon, eLon = ',
+#                       sLon, mwLon, meLon, eLon, ' | sLat, mLat, eLat = ',
+#                       sLat, mLat, eLat )
+#==============================================================================
+            """ Project to web mercator if need, otherwise just geographic"""
+            if WEBMERC:
+                sLon = earthRadius * sLon * math.pi/180
+                sLat = earthRadius * math.log(math.tan((math.pi/4) + (
+                    (sLat*math.pi/180)/2)))
+                eLon = earthRadius * eLon * math.pi/180
+                eLat = earthRadius * math.log(math.tan((math.pi/4) + (
+                    (eLat*math.pi/180)/2)))
+                mwLon = earthRadius * mwLon * math.pi/180
+                meLon = earthRadius * meLon * math.pi/180
+                mLat = earthRadius * math.log(math.tan((math.pi/4) + (
+                    (mLat*math.pi/180)/2)))
+
+            """ Done with Web Mercator projection if needed.
+                Now put the coordiantes into the appropriate lists. """
+            """ SEGEMNT Coordinates """
             segCoords = [[[sLon, sLat],[mwLon,mLat]],
                          [[meLon,mLat],[eLon, eLat]]]
  
             """ Add coordinates to the Track shapefile list """
-            trackCoords.append([[[sLon, sLat],[mwLon,mLat]],
-                               [[meLon,mLat],[eLon, eLat]]])
+            trackCoords.append([[sLon, sLat],[mwLon,mLat]])
+            trackCoords.append([[meLon,mLat],[eLon, eLat]])
         else:               
             """ Project to web mercator if need, otherwise just geographic"""
             if WEBMERC:
@@ -843,7 +850,7 @@ for i, storm in enumerate(allStorms):
                            dispDate,            # Display Date
                            thisSegment.pres,    # Display Min Pressure
                            dispDateTime,        # Display Date and Time
-                         3.0e9+missingSegNum,   # Segment Order, a unique ID
+                           3.0E9+missingSegNum, # Segment Order, a unique ID
                            # End of Previous Attributes
                            thisSegment.nature,  # Nature (not quite SS)
                            thisSegment.enso,    # ENSO Flag
