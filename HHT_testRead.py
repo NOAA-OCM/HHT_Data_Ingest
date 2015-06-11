@@ -51,7 +51,7 @@ if TESTING:
 #     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-    resultsDir = workDir + "Results/TRand1/"  #  Location for final data
+    resultsDir = workDir + "Results/T1/"  #  Location for final data
 else:
     #h2AtlRaw = dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
     #h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
@@ -62,7 +62,7 @@ else:
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r06.csv" # IBTrACS CSC v03R06
 #    ibRaw = dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS ALL V03R05
 
-    resultsDir = workDir + "Results/FullMerc1/"  #  Location for final data
+    resultsDir = workDir + "Results/June11_02/"  #  Location for final data
 
 """--------------------------------------------------------------------"""
 
@@ -80,9 +80,10 @@ if WEBMERC:
     earthCircumference = math.pi * 2.0 * earthRadius  
     """ Define EPSG:3857 -- WGS84 Web Mercator (Auxiliary Sphere) Projection string 
         http://spatialreference.org/ref/sr-org/7483/ """
-    epsg = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs'
-    """ ESRI prj file below """
+    #epsg = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs'
     #epsg = 'PROJCS["WGS 84 / Pseudo-Mercator",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["Degree",0.017453292519943295]],PROJECTION["Mercator"],PARAMETER["central_meridian",0],PARAMETER["scale_factor",1],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["Meter",1]]'
+    """ ESRI prj file below """
+    epsg = 'PROJCS["WGS_1984_Web_Mercator_Auxiliary_Sphere",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Mercator_Auxiliary_Sphere"],PARAMETER["False_Easting",0.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",0.0],PARAMETER["Standard_Parallel_1",0.0],PARAMETER["Auxiliary_Sphere_Type",0.0],UNIT["Meter",1.0]]'
 else:    
     """ Define WGS84 Geographic Projection string """
     epsg = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
@@ -530,9 +531,11 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
  
 print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
         ibNum, hstormNum[0], hstormNum[1]), "\n ",
-        "Total storms = {0}, Unique storms = {1}".format(
-        len(allSorted),len(allStorms)), 
-        "\nDuplicated storms: {0}".format(nDups,"" ))#nDup2s))
+        "Multi-Obs storms = {0}, Single Pts = {1}, Unique storms = {2}".format(
+        len(allSorted),numSinglePoint, len(allStorms)), 
+        "\nDuplicated storms: {0}".format(nDups,
+        "\n Note that Single Obs Storms are ommited from all other counts",
+        " and output."))
 
 """ -------------------- All storms are now unique -------------------- """
 
@@ -564,7 +567,27 @@ for i, storm in enumerate(allStorms):
                     + storm.segs[j+1].startLon)
                 print('Adjusting')
         """ put adjusted or NOT adjusted start lat & lon at (j+1) 
-            in end lat/lon for (j) """
+            in end lat/lon for (j)""" 
+#==============================================================================
+#         """    NOTE BENE: If start and end are the same, offset End slightly """
+#         if(storm.segs[j+1].startLat == storm.segs[j].startLat): 
+# #            print('Tweaking identical points')
+#             storm.segs[j+1].startLat += 0.00001
+#             storm.segs[j+1].startLon += 0.00001
+#         if(storm.segs[j+1].startLon == storm.segs[j].startLon):
+# #            print('Tweaking identical points')
+#             storm.segs[j+1].startLat += 0.00001
+#             storm.segs[j+1].startLon += 0.00001
+#==============================================================================
+        """ NOTE BENE: If start and end are too close, offset End slightly """
+        segLength = math.sqrt((storm.segs[j+1].startLat-
+            storm.segs[j].startLat)**2
+            + (storm.segs[j+1].startLon-storm.segs[j].startLon)**2)
+        if(segLength <0.14):
+            #print('Tweaking identical points, segLength = ', segLength)
+            storm.segs[j+1].startLat += 0.001
+            storm.segs[j+1].startLon += 0.001
+              
         storm.segs[j].endLat = storm.segs[j+1].startLat
         storm.segs[j].endLon = storm.segs[j+1].startLon
         """ ---------------------END 180 Stuff ----------------------------"""
@@ -591,8 +614,8 @@ for i, storm in enumerate(allStorms):
     starting location, but offset by 0.01 degrees.  
     This allows for the creation of a valid attributed line for every
     actual observation."""   
-    storm.segs[jLast].endLat = float(storm.segs[jLast].startLat + 0.00001)
-    storm.segs[jLast].endLon = float(storm.segs[jLast].startLon + 0.00001)
+    storm.segs[jLast].endLat = float(storm.segs[jLast].startLat + 0.0001)
+    storm.segs[jLast].endLon = float(storm.segs[jLast].startLon + 0.0001)
    
     """ --- Saffir-Simpson value for each segment"""
     storm.segs[jLast].saffir = getCat(storm.segs[jLast].nature, 
@@ -626,11 +649,11 @@ for i, storm in enumerate(allStorms):
 
 stormFields = [['STORMID','C','56'],
                ['MxWind1min','N','19'],
-               ['BASIN','C','4'],
+               ['Basin','C','10'],
                ['Disp_Name','C','81'],
                ['DDateRange','C','140'],
-               ['BegObDate','D','10'],
-               ['EndObDate','D','10'],
+               ['BegObDate','D','8'],
+               ['EndObDate','D','8'],
                ['D_SaffirS','C','10'],
                ['FP_Years','C','10'],
                ['FP_Months','C','10'],
@@ -658,9 +681,9 @@ for attribute in stormFields:
 """ For SEGMENTS : """
 segmentFields = [['STORMID','C','58'],
                  ['MSW_1min','N','9'],
-                 ['BeginObHr','N','9'],
+                 ['BeginObHr','C','9'],
                  ['BeginLat','C','10'],
-                 ['BEGINLON','C','10'],
+                 ['BeginLon','C','10'],
                  ['Min_Press','C','10'],
                  ['Basin','C','10'],
                  ['SS_Scale','C','10'],
@@ -670,11 +693,11 @@ segmentFields = [['STORMID','C','58'],
                  ['DispDate','C','20'],
                  ['DMin_Press','C','10'],
                  ['DDateNTime','C','20'],
-                 ['SegOrder','N','20'],#End of previous attributes
+                 ['Segment_ID','C','12'],#End of previous attributes
                  ['Nature','C','20'],
                  ['ENSO','C','20'],
-                 ['EndLat','C','20'],
-                 ['EndLon','C','20']]               
+                 ['EndLat','N','20'],
+                 ['EndLon','N','20']]               
 
 """ Create and initalize the fields for the needed Tracks Shapefiles """
 goodSegments = shapefile.Writer(shapefile.POLYLINE) # New shapefile
@@ -705,19 +728,7 @@ for i, storm in enumerate(allStorms):
     else:
         goodStorm = True
     for thisSegment in storm.segs:
-#==============================================================================
-#                 """ Make sure LONGITUDE does not change sign across the +-180 line"""
-#         if abs(storm.segs[j].startLon - storm.segs[j+1].startLon) > 270.:
-#             """ Lon crosses 180, so """
-#             if (BREAK180):
-#                 """ Create 2 records, spanning the break """
-#             else:
-#                 """  OR adjust all following startLons so it does not """
-#                 storm.segs[j+1].startLon = (
-#                     math.copysign(360.0,storm.segs[j].startLon)
-#                     + storm.segs[j+1].startLon)
-#         storm.segs[j].endLon = storm.segs[j+1].startLon
-#==============================================================================
+
         """ Check for segments spanning the 180 degree line. If they do
             and BREAK180 is true, create multi-part segments. """
         if abs(thisSegment.startLon - thisSegment.endLon) > 270.:
@@ -763,6 +774,19 @@ for i, storm in enumerate(allStorms):
             """ SEGEMNT Coordinates """
             segCoords = [[[sLon, sLat],[mwLon,mLat]],
                          [[meLon,mLat],[eLon, eLat]]]
+#==============================================================================
+#             """ DEBUG: Print out info for Georges, which is one of many storms 
+#                 generating shapefiles with bad geometry due to segments to short. """
+#             if(storm.name == 'GEORGES 1998'):
+#                 print(sLat,sLon, eLat, eLon,'Total Length = ', 
+#                       math.sqrt( (sLon - eLon)**2 + (sLat-eLat)**2)) 
+#                 print('  Leg 1 Length = ', 
+#                       math.sqrt( (sLon - meLon)**2 + (sLat-mLat)**2))
+#                 print('  Leg 2 Length = ', 
+#                       math.sqrt( (mwLon - eLon)**2 + (mLat-eLat)**2))                
+#             """ -------------------  END DEBUG ----------------------"""
+#==============================================================================
+
  
             """ Add coordinates to the Track shapefile list """
             trackCoords.append([[sLon, sLat],[mwLon,mLat]])
@@ -782,6 +806,14 @@ for i, storm in enumerate(allStorms):
                 eLon = thisSegment.endLon
                 eLat = thisSegment.endLat
             segCoords = [[[sLon, sLat],[eLon, eLat]]]
+#==============================================================================
+#             """ DEBUG: Print out info for Georges, which is one of many storms 
+#                 generating shapefiles with bad geometry due to segments to short. """
+#             if(storm.name == 'GEORGES 1998'):
+#                 print(sLat,sLon, eLat, eLon,'Total Length = ', 
+#                       math.sqrt( (sLon - eLon)**2 + (sLat-eLat)**2)) 
+#             """ -------------------  END DEBUG ----------------------"""
+#==============================================================================
 
             """ Add coordinates to the Track shapefile list """
             trackCoords.append([[sLon, sLat],[eLon, eLat]])
@@ -799,7 +831,8 @@ for i, storm in enumerate(allStorms):
         dateTime = dt.datetime.strftime(thisSegment.time,'%m/%d/%Y %H')
         dispDate = dt.datetime.strftime(thisSegment.time,'%b %d, %Y')
         dispDateTime = dt.datetime.strftime(thisSegment.time,'%b %d, %Y %Hz')
-  
+
+             
         """ Add this segment's data to the appropriate segments shapefile """
         if goodStorm:
 #==============================================================================
@@ -850,7 +883,7 @@ for i, storm in enumerate(allStorms):
                            dispDate,            # Display Date
                            thisSegment.pres,    # Display Min Pressure
                            dispDateTime,        # Display Date and Time
-                           3.0E9+missingSegNum, # Segment Order, a unique ID
+                         3000000+missingSegNum, # Segment Order, a unique ID
                            # End of Previous Attributes
                            thisSegment.nature,  # Nature (not quite SS)
                            thisSegment.enso,    # ENSO Flag
@@ -901,7 +934,9 @@ for i, storm in enumerate(allStorms):
              filtMons = filtMons + ', %d' %imnth
         
     intensOrder = 0
-    filtClimReg = ""
+    filtClimReg = "Dummy"
+    begObDate = dt.datetime.strftime(storm.startTime,'%Y%m%d') 
+    endObDate = dt.datetime.strftime(storm.endTime,'%Y%m%d')
     """   --------  End of Extra fields   ------------    """
     """ Append track to appropriate stormTracks list """
     if goodStorm:
@@ -912,8 +947,8 @@ for i, storm in enumerate(allStorms):
                        basin,           # Basin
                        storm.name,      # Display Storm Name
                        dateRng,         # Display Date Range
-                       storm.startTime, # Begin Observation Date
-                       storm.endTime,   # End Observation Date
+                       begObDate, # Begin Observation Date
+                       endObDate,   # End Observation Date
                        storm.maxSaffir, # Display Saffir Simpson
                        filtYrs,         # Filter Param. Years
                        filtMons,        # Filter Param. Months
@@ -933,8 +968,8 @@ for i, storm in enumerate(allStorms):
                        basin,           # Basin
                        storm.name,      # Display Storm Name
                        dateRng,         # Display Date Range
-                       storm.startTime, # Begin Observation Date
-                       storm.endTime,   # End Observation Date
+                       begObDate, # Begin Observation Date
+                       endObDate,   # End Observation Date
                        storm.maxSaffir, # Display Saffir Simpson
                        filtYrs,         # Filter Param. Years
                        filtMons,        # Filter Param. Months
