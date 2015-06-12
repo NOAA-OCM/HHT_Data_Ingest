@@ -62,7 +62,7 @@ else:
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r06.csv" # IBTrACS CSC v03R06
 #    ibRaw = dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS ALL V03R05
 
-    resultsDir = workDir + "Results/June11_02/"  #  Location for final data
+    resultsDir = workDir + "Results/DupTest_June12_01/"  #  Location for final data
 
 """--------------------------------------------------------------------"""
 
@@ -366,9 +366,6 @@ with open(ibRaw, "r") as rawObsFile:
 
 """ Read HURDAT2 data """
      
-""" NOTE BENE:  May prefer to find the first storm that 
-    is not in the IBTRaCS data  """    
-
 hFiles = [h2AtlRaw, h2nepacRaw]
 #hFiles = []
 hstormNum = [0,0]
@@ -486,6 +483,21 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
 #         sameName = ( allSorted[i].name.find(allStorms[j].name)
 #                  + allStorms[j].name.find(allSorted[i].name)  )
 #==============================================================================
+        """ Check data sources.  If they are not IBTrACS vs HURDAT, then
+            the storms are not duplicates.  
+            N.B.: This assumes no intradataset duplicates, which seems true.
+            
+            The below test works because IBTrACS has a source flag of 
+            0 and hurdats are 1 or 2.  Therefore the abs(sum) of a hurdat and
+            IBTrACS should equal the abs(difference) of IB and hurdat. 
+            If that euqlity condition is not true, then the records being 
+            compared are from the same data set and we can skip the comparison.
+            This should prevent dropping near idenical storms from the same 
+            source  """
+        if(abs(allSorted[i].source + allStorms[j].source) != 
+            abs(allSorted[i].source - allStorms[j].source)):
+                continue # These are from different data sets
+        
         """ Check names, but omit the year from the search string"""
         AsortedName = allSorted[i].name[:len(allSorted[i].name)-5]  
         AallName =  allStorms[j].name[:len(allStorms[j].name)-5]   
