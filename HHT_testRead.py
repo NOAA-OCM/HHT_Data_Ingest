@@ -62,7 +62,7 @@ else:
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r06.csv" # IBTrACS CSC v03R06
 #    ibRaw = dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS ALL V03R05
 
-    resultsDir = workDir + "Results/DupTest_June12_01/"  #  Location for final data
+    resultsDir = workDir + "Results/ProdReady_20150626/"  #  Location for final data
 
 """--------------------------------------------------------------------"""
 
@@ -99,7 +99,7 @@ else:
          """
 """ Get dictionary of ENSO state by YYYY-MM key """
 ensoLookup = {}
-ensoLookup = ensoDownload.ensoDict()
+ensoLookup = ensoDownload.ensoDict(dataDir)
 """ Get NHC Storm reports for HURDAT storms from:
              http://www.nhc.noaa.gov/TCR_StormReportsIndex.xml (DLE)
 """
@@ -256,7 +256,7 @@ class Segment(Observation):
 """ Create an empty list to hold allStorms
     and initialize the total storm counter """
 allStorms = []
-numStorms = -1
+#numStorms = -1
 numAllMissing = 0
 numSinglePoint = 0
 numGoodObs = 0
@@ -321,7 +321,12 @@ with open(ibRaw, "r") as rawObsFile:
                  nseg += 1
              else: #Found a new storm so...
                  thisStorm.numSegs = len(thisStorm.segs)
-                 allStorms.append(thisStorm) # Add old storm to allStorms
+#                 allStorms.append(thisStorm) # Add old storm to allStorms
+                 """ Only keep the storm if there is more than ONE observation: """
+                 if(thisStorm.numSegs > 1):
+                     allStorms.append(thisStorm) # Add old storm to allStorms
+                 else:
+                     numSinglePoint += 1
                  ibNum += 1 # Increment counter for IBTrACS storms
 #==============================================================================
 #                  print("IBTrACS storm # ",ibNum," named ",thisStorm.name,
@@ -386,7 +391,7 @@ for i, file in enumerate(hFiles):
                 break # Break on EOF
 
             """ This is a new storm so create a new storm record for it """
-            numStorms += 1
+            #numStorms += 1
             hstormNum[i] += 1
             vals = lineVals.split(",")
             #print ("vals = ",vals[0],vals[1],vals[2], len(vals))
@@ -433,6 +438,9 @@ for i, file in enumerate(hFiles):
                  + thisStorm.startTime.strftime('%Y') 
             thisStorm.endTime = thisStorm.segs[len(thisStorm.segs)-1].time
             """ Only keep the storm if there is more than ONE observation: """
+            if(thisStorm.numSegs != len(thisStorm.segs)):
+                print ("Error in Hurdat data record.  Segment count mismatch")
+                thisStorm.numSegs = len(thisStorm.segs)
             if(thisStorm.numSegs > 1):
                  allStorms.append(thisStorm) # Add old storm to allStorms
             else:
@@ -547,7 +555,7 @@ print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
         len(allSorted),numSinglePoint, len(allStorms)), 
         "\nDuplicated storms: {0}".format(nDups,
         "\n Note that Single Obs Storms are ommited from all other counts",
-        " and output."))
+        " and output.\n"))
 
 """ -------------------- All storms are now unique -------------------- """
 
