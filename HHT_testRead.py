@@ -19,6 +19,7 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
 """
 import math
 import random
+import json
 import shapefile
 import datetime as dt
 import ensoDownload
@@ -51,7 +52,7 @@ if TESTING:
 #     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-    resultsDir = workDir + "Results/T1/"  #  Location for final data
+    resultsDir = workDir + "Results/T2/"  #  Location for final data
 else:
     #h2AtlRaw = dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
     #h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
@@ -62,7 +63,11 @@ else:
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r06.csv" # IBTrACS CSC v03R06
 #    ibRaw = dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS ALL V03R05
 
-    resultsDir = workDir + "Results/ProdReady_20150626/"  #  Location for final data
+    resultsDir = workDir + "Results/ProdReady_20150701/"  #  Location for final data
+""" Define JSON filenames """
+namesJS = resultsDir + 'stormnames.js'
+namesJSON = resultsDir + 'stormnames.json'
+yearsJSON = resultsDir + 'hurricaneYears.json'
 
 """--------------------------------------------------------------------"""
 
@@ -562,6 +567,9 @@ print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
 """ Now process unique storms for QA/QC and finding Saffir-Simpson value """
 """ Make a list of all the Nature types. Needed for setting up enso logic"""
 allNatures = []
+""" Make lists for names and years.  Needed for JSON files used by HHT site."""
+stormNames = []
+stormYears = ['All']
 #for i, storm in enumerate(allStorms[11700:11802:4]):
 #for i, storm in enumerate(allStorms[1:3]):
 for i, storm in enumerate(allStorms):
@@ -1001,7 +1009,16 @@ for i, storm in enumerate(allStorms):
                        # Extra Attributes below
                        storm.numSegs,   # Number of segments in this Track
                        storm.enso)      # ENSO Flag
-""" All done, so scramble Segments if needed.  
+    """ Append the names and the begin and end years to lists so that 
+        JSON files of the unique names and years can be created for use 
+        in the HHT web application """
+    stormNames.append(storm.name)
+    stormYears.append(dt.datetime.strftime(storm.startTime,'%Y') )
+    stormYears.append(dt.datetime.strftime(storm.endTime,'%Y') )
+
+
+""" All done, so """
+"""Then scramble Segments if needed.  
     Then populate Segments shapefile"""
 if (SCRAMBLE):
     random.shuffle(goodSegIndx)
@@ -1056,6 +1073,20 @@ missingTracks.save(missingStormFileName)
 prj4 = open("%s.prj" % missingStormFileName, "w")
 prj4.write(epsg)
 prj4.close()
+
+"""Create JSON files for unique storm names and unique years."""
+uniqueNames = sorted(list(set(stormNames)))
+uniqueYears = sorted(list(set(stormYears)))
+fNamesJS = open(namesJS,'w')
+nameString = 'var stormnames = ' + json.dumps(uniqueNames)
+fNamesJS.write(nameString)
+#print(nameString)
+fNamesJSON = open(namesJSON,'w')
+json.dump(uniqueNames,fNamesJSON)
+fYears = open(yearsJSON,'w')
+json.dump(uniqueYears,fYears)
+#print((uniqueYears))
+
 
 print(' Valid tracks: ',numGoodObs, '\n No Valid Obs: ',numAllMissing, 
       '\n Single Point storms: ', numSinglePoint)
