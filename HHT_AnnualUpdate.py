@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Reading and reformatting 3 files for HHT data reprocessing.
+HHT_AnnualUpdate.py
+
+A script for reading and reformatting 3 data files for HHT data reprocessing.
 Python 3.4
 
 Created 2014-12-11 by David L Eslinger (DLE)
@@ -16,7 +18,13 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
              from the older storms.
          2015-06-02: Randomizing segment order to make tool behave as 
              previously with SQL process with segements in random order.
+         2915-07-20: Renamed for operational use.  Now also creates two needed 
+             index files: hurricaneYears.json and stormnames.js. These are 
+             used by the Historical Hurricane Tracks site 
+             (http://coast.noaa.gov/hurricanes) for searching by year and/or 
+             by name.       
 """
+
 import math
 import random
 import json
@@ -24,6 +32,7 @@ import shapefile
 import datetime as dt
 import ensoDownload
 import stormReportDownload
+
 """ Declarations and Parameters """
 SCRAMBLE = True
 WEBMERC = True
@@ -41,7 +50,6 @@ workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
 #workDir = "T:/DaveE/HHT/" # TEMP drive On OCM Network
 #workDir = "/san1/tmp/DaveE/HHT/" # Temp drive On OCM Linux
-#workDir = "/home/dave/Data/Hurricanes/" # On Zog
 dataDir = workDir + "Data/"  # Data location
 if TESTING:  
     h2nepacRaw = dataDir + "h2nmid.txt" # HURDAT2 NE North Pacific Data
@@ -52,7 +60,7 @@ if TESTING:
 #     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-    resultsDir = workDir + "Results/T2/"  #  Location for final data
+    resultsDir = workDir + "Results/T3/"  #  Location for final data
 else:
     #h2AtlRaw = dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
     #h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
@@ -63,10 +71,9 @@ else:
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r06.csv" # IBTrACS CSC v03R06
 #    ibRaw = dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS ALL V03R05
 
-    resultsDir = workDir + "Results/ProdReady_20150701/"  #  Location for final data
+    resultsDir = workDir + "Results/ProdReady_20150720/"  #  Location for final data
 """ Define JSON filenames """
 namesJS = resultsDir + 'stormnames.js'
-namesJSON = resultsDir + 'stormnames.json'
 yearsJSON = resultsDir + 'hurricaneYears.json'
 
 """--------------------------------------------------------------------"""
@@ -462,15 +469,6 @@ for i, file in enumerate(hFiles):
     based on value of use_HURDAT boolean """
     
 allSorted = sorted(allStorms, key = lambda storm: storm.startTime)
-#allSorted = sorted(allStorms, key = lambda storm: storm.name)
-#==============================================================================
-# for storm in allStorms:
-#     print("Name, Time = ", storm.name, storm.segs[0].time)
-# for storm in allSorted:
-#     if storm.startTime.find('2013') > -1:
-#         print("SORTED: Source, UID, Name, Time, source = ", 
-#          storm.source, storm.uid, storm.name, storm.segs[0].time)
-#==============================================================================
 
 allStorms = [] # Clear allStorms variable to use for unique storms
 allStorms.append(allSorted[0]) # Add first storm to the non-duplicate list
@@ -498,14 +496,14 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
 #==============================================================================
         """ Check data sources.  If they are not IBTrACS vs HURDAT, then
             the storms are not duplicates.  
-            N.B.: This assumes no intradataset duplicates, which seems true.
+            N.B.: This assumes no intra-dataset duplicates, which seems true.
             
             The below test works because IBTrACS has a source flag of 
-            0 and hurdats are 1 or 2.  Therefore the abs(sum) of a hurdat and
+            0 and hurdat's are 1 or 2.  Therefore the abs(sum) of a hurdat and
             IBTrACS should equal the abs(difference) of IB and hurdat. 
-            If that euqlity condition is not true, then the records being 
+            If that equality condition is not true, then the records being 
             compared are from the same data set and we can skip the comparison.
-            This should prevent dropping near idenical storms from the same 
+            This should prevent dropping near identical storms from the same 
             source  """
         if(abs(allSorted[i].source + allStorms[j].source) != 
             abs(allSorted[i].source - allStorms[j].source)):
@@ -554,13 +552,21 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
     else: # not a duplicate, so copy it to allStorms
         allStorms.append(allSorted[i])
  
-print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
-        ibNum, hstormNum[0], hstormNum[1]), "\n ",
-        "Multi-Obs storms = {0}, Single Pts = {1}, Unique storms = {2}".format(
-        len(allSorted),numSinglePoint, len(allStorms)), 
-        "\nDuplicated storms: {0}".format(nDups,
-        "\n Note that Single Obs Storms are ommited from all other counts",
-        " and output.\n"))
+#==============================================================================
+# print ("\nIBTrACS: {0}, HURDAT2_ATL: {1}, HURDAT2_NEPAC: {2}".format(
+#         ibNum, hstormNum[0], hstormNum[1]),
+#         "\n   QA: TOTAL STORMS INGESTED = {0}\n".format(
+#         ibNum+hstormNum[0]+hstormNum[1]), 
+#         "Single Obs storms ommitted: {0}, Multi-Obs storms kept: {1}".format(
+#         numSinglePoint,len(allSorted)),
+#         "\n   QA: STORMS LENGTH CHECKED = {0} (Equals total ingested.)\n".format(
+#         len(allSorted)+numSinglePoint),
+#         "Duplicated storms removed: {0}, Unique storms = {1}".format(
+#         nDups,len(allStorms)), 
+#         "\n   QA: TOTAL STORMS PROCESSED for DUPLICATES = {0}\n".format(
+#         nDups+len(allStorms)),
+#         "    (This should equal number of Multi-obs storms.)\n")
+#==============================================================================
 
 """ -------------------- All storms are now unique -------------------- """
 
@@ -569,7 +575,7 @@ print ("\nIBTrACS: {0}, H2_ATL: {1}, H2_NEPAC: {2}".format(
 allNatures = []
 """ Make lists for names and years.  Needed for JSON files used by HHT site."""
 stormNames = []
-stormYears = ['All']
+stormYears = []
 #for i, storm in enumerate(allStorms[11700:11802:4]):
 #for i, storm in enumerate(allStorms[1:3]):
 for i, storm in enumerate(allStorms):
@@ -596,17 +602,7 @@ for i, storm in enumerate(allStorms):
                 print('Adjusting')
         """ put adjusted or NOT adjusted start lat & lon at (j+1) 
             in end lat/lon for (j)""" 
-#==============================================================================
-#         """    NOTE BENE: If start and end are the same, offset End slightly """
-#         if(storm.segs[j+1].startLat == storm.segs[j].startLat): 
-# #            print('Tweaking identical points')
-#             storm.segs[j+1].startLat += 0.00001
-#             storm.segs[j+1].startLon += 0.00001
-#         if(storm.segs[j+1].startLon == storm.segs[j].startLon):
-# #            print('Tweaking identical points')
-#             storm.segs[j+1].startLat += 0.00001
-#             storm.segs[j+1].startLon += 0.00001
-#==============================================================================
+
         """ NOTE BENE: If start and end are too close, offset End slightly """
         segLength = math.sqrt((storm.segs[j+1].startLat-
             storm.segs[j].startLat)**2
@@ -733,7 +729,6 @@ goodSegments.autoBalance = 1 # make sure all shapes have records
 missingSegments = shapefile.Writer(shapefile.POLYLINE) # New shapefile
 missingSegments.autoBalance = 1 # make sure all shapes have records
 for attribute in segmentFields: # Add Fields for track shapefile
-   # print(attribute)
     goodSegments.field(attribute[0],attribute[1],attribute[2]) 
     missingSegments.field(attribute[0],attribute[1],attribute[2]) 
 """Lists needed for SCRAMBLING Segments """
@@ -779,11 +774,7 @@ for i, storm in enumerate(allStorms):
                 mLat = sLat + (sLat - eLat)* ((thisSegment.startLon - 
                     math.copysign(180.0,thisSegment.startLon))/
                         deltaLon )
-#==============================================================================
-#                 print('sLon, mwLon, meLon, eLon = ',
-#                       sLon, mwLon, meLon, eLon, ' | sLat, mLat, eLat = ',
-#                       sLat, mLat, eLat )
-#==============================================================================
+
             """ Project to web mercator if need, otherwise just geographic"""
             if WEBMERC:
                 sLon = earthRadius * sLon * math.pi/180
@@ -863,10 +854,6 @@ for i, storm in enumerate(allStorms):
              
         """ Add this segment's data to the appropriate segments shapefile """
         if goodStorm:
-#==============================================================================
-#             goodSegments.poly(parts = segCoords)
-#             goodSegments.record(storm.uid,           # Storm ID
-#==============================================================================
             goodSegCoords.append(segCoords)
             goodSegParams.append([storm.uid,           # Storm ID
                            thisSegment.wsp,     # Max. Sustained Wind
@@ -892,10 +879,6 @@ for i, storm in enumerate(allStorms):
             goodSegNum += 1
                     
         else:
-#==============================================================================
-#             missingSegments.poly(parts = segCoords)
-#             missingSegments.record(storm.uid,           # Storm ID
-#==============================================================================
             missingSegCoords.append(segCoords)
             missingSegParams.append([storm.uid,           # Storm ID
                             thisSegment.wsp,     # Max. Sustained Wind
@@ -1024,10 +1007,6 @@ if (SCRAMBLE):
     random.shuffle(goodSegIndx)
     random.shuffle(missingSegIndx)   
 for i in goodSegIndx:
-#==============================================================================
-#     print('i, Regular: ',i, goodSegCoords[i])
-#     print('Unpacked: ',*goodSegCoords[i])
-#==============================================================================
     tmp = goodSegCoords[i]
     goodSegments.poly(parts = goodSegCoords[i])
     goodSegments.record(*goodSegParams[i])
@@ -1039,7 +1018,7 @@ for i in missingSegIndx:
 
         
 """ Save shapefile """
-#    thisName = resultsDir+storm.name.replace(":","_")+"_"+storm.startTime[:4]
+
 if WEBMERC:
     goodSegmentName = resultsDir+'goodSegments_WebMerc_2015'
     goodStormFileName = resultsDir+'goodTracks_WebMerc_2015'
@@ -1050,7 +1029,7 @@ else:
      goodStormFileName = resultsDir+'goodTracks_2015'
      missingSegmentName = resultsDir+'missingSegments_2015'
      missingStormFileName = resultsDir+'missingTracks_2015'
-#print("goodSegments.shapeType = ",goodSegments.shapeType)
+
 
 goodSegments.save(goodSegmentName)
 # create the PRJ file
@@ -1074,19 +1053,35 @@ prj4 = open("%s.prj" % missingStormFileName, "w")
 prj4.write(epsg)
 prj4.close()
 
-"""Create JSON files for unique storm names and unique years."""
+"""Create JSON/js files for unique storm names and unique years."""
 uniqueNames = sorted(list(set(stormNames)))
 uniqueYears = sorted(list(set(stormYears)))
+uniqueYears[:0] = ['All']
 fNamesJS = open(namesJS,'w')
 nameString = 'var stormnames = ' + json.dumps(uniqueNames)
 fNamesJS.write(nameString)
-#print(nameString)
-fNamesJSON = open(namesJSON,'w')
-json.dump(uniqueNames,fNamesJSON)
 fYears = open(yearsJSON,'w')
 json.dump(uniqueYears,fYears)
-#print((uniqueYears))
 
-
-print(' Valid tracks: ',numGoodObs, '\n No Valid Obs: ',numAllMissing, 
-      '\n Single Point storms: ', numSinglePoint)
+print("\n    IBTrACS: {0}, HURDAT2_ATL: {1}, HURDAT2_NEPAC: {2}".format(
+        ibNum, hstormNum[0], hstormNum[1]),
+        "\nQA: TOTAL STORMS INGESTED = {0}\n".format(
+        ibNum+hstormNum[0]+hstormNum[1]), 
+        "    Single Obs storms removed: {0}, Multi-Obs storms kept: {1}"
+        .format(numSinglePoint,len(allSorted)),
+        "\nQA: STORMS LENGTH CHECKED = {0} \n(Should equal total ingested.)\n"
+        .format(len(allSorted)+numSinglePoint),
+        "    Duplicate storms removed: {0}, Unique storms = {1}"
+        .format(nDups,len(allStorms)), 
+        "\nQA: STORMS PROCESSED for DUPLICATES = {0}\n".format(
+        nDups+len(allStorms)),
+        "    (This should equal number of Multi-obs storms.)")
+print ("    Storms with no wind or pressure:",numAllMissing,
+       ", Good storm tracks: ",numGoodObs, 
+       "\nQA: STORMS CHECKED FOR WIND AND PRESSURE VALUES = {0}\n"
+       .format(numAllMissing+numGoodObs),
+        "    (This should equal number of UNIQUE storms.)\n")
+print("\n\nIf the above QA numbers are consistent, there will be ",
+      numGoodObs,'\nstorms in the "good" shapefiles,\n',
+      "and",numAllMissing,'storms in the "missing" shapefiles. \n',
+      'All should be ingested into the database for use on the HHT site.')
