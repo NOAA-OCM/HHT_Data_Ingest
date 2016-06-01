@@ -14,16 +14,25 @@ This process will be used in the HHT preprocessing program
 to create a dictionary to tag each segment with it's ENSO state.
 
 """
-def ensoDict():
+def ensoDict(dataDirectory):
     import urllib.request # Works on more systems at the moment
     """ This bit will get the raw text data from the CPO data site """
     ensoURL = 'http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt'
-    print ("Getting ENSO ONI data from:\n",
+    print ("Checking ENSO ONI data from:\n",
            ensoURL, "\n")
            
-    with urllib.request.urlopen(ensoURL) as r:
-        allLines = str(r.read())
-    lines = allLines.split("\\n") #Reuires the escape char to be escaped for some reason
+    try:
+        with urllib.request.urlopen(ensoURL) as r:
+            allLines = str(r.read())
+            lines = allLines.split("\\n") #Web version requires the escape char to be escaped for some reason
+    except urllib.error.URLError:
+        cacheURL = dataDirectory + "ENSO_cache_20150616.txt"
+        print ("WARNING: Web access not available for ", ensoURL,
+            ".\n Using cached version at ", cacheURL)
+        cached = open(cacheURL,'r')
+        allLines = str(cached.read())
+        print ("Cache read successfully")
+        lines = allLines.split("\n") #Cached version does not need the escape char to be escaped for some reason
     numLines = len(lines)
     print("\n",numLines,"lines in initial ENSO data file.  First header line\n",
           " and any empty lines at the end will be dropped")
@@ -79,7 +88,7 @@ def ensoDict():
            -1 = La Nina 
            
          The logic is that if the centered, running sum for any month 
-         is +5 or -5, then all 5 of tho se summed months were in a non-neutral
+         is +5 or -5, then all 5 of those summed months were in a non-neutral
          ENSO state. They are flagged appropriately.  Unflagged vlaues retain
          their initialized Neutral (0) flag. """
     testStat = [0]*numRows
