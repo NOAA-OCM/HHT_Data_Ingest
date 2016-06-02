@@ -18,11 +18,13 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
              from the older storms.
          2015-06-02: Randomizing segment order to make tool behave as 
              previously with SQL process with segements in random order.
-         2915-07-20: Renamed for operational use.  Now also creates two needed 
+         2015-07-20: Renamed for operational use.  Now also creates two needed 
              index files: hurricaneYears.json and stormnames.js. These are 
              used by the Historical Hurricane Tracks site 
              (http://coast.noaa.gov/hurricanes) for searching by year and/or 
-             by name.       
+             by name.  
+         2016-04-20: Matt Pendleton editing for test runs for 2015 data
+         2016-05-16: test runs with 2015 ibtracs and fixed Hurdat2
 """
 
 import math
@@ -45,33 +47,34 @@ use_HURDAT = True
 dupRange = 5  
 
 """---------------------DEFINE WORKING DIRECTORIES------------------------"""
-#workDir = "C:/GIS/Hurricane/HHT_Python/" # On OCM Work Machine
-workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
-workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
+workDir = "C:/Data/2015runs/" # On OCM Work Machine
+dataDir = workDir   # Data location
+#workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
+#workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
 #workDir = "T:/DaveE/HHT/" # TEMP drive On OCM Network
 #workDir = "/san1/tmp/DaveE/HHT/" # Temp drive On OCM Linux
-dataDir = workDir + "Data/"  # Data location
+#dataDir = workDir + "Data/"  # Data location
 if TESTING:  
-    h2nepacRaw = dataDir + "h2nmid.txt" # HURDAT2 NE North Pacific Data
-    h2AtlRaw = dataDir + "h2mid.txt"     # HURDAT2 North Atlantic Data
-    ibRaw = dataDir + "midAllcsc.csv"           # IBTrACS CSC version Data
+#    h2nepacRaw = dataDir + "h2nmid.txt" # HURDAT2 NE North Pacific Data
+    h2AtlRaw = dataDir + "hurdat2-TEST.txt"     # HURDAT2 North Atlantic Data
+    ibRaw = dataDir + "newcsc.csv"           # IBTrACS CSC version Data
 #==============================================================================
 #     h2nepacRaw = workDir + "h2NEPACtail.txt" # HURDAT2 NE North Pacific Data
 #     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
 #     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
 #==============================================================================
-    resultsDir = workDir + "Results/T3/"  #  Location for final data
+    resultsDir = workDir + "Results/T_No_180_No_Adjust/"  #  Location for final data
 else:
     #h2AtlRaw = dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
     #h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
     #h2AtlRaw = dataDir + "hurdat2-1851-2013-052714.txt"     # HURDAT2 North Atlantic Data 2013
-    h2AtlRaw = dataDir + "hurdat2-1851-2014-022315.txt"     # HURDAT2 North Atlantic Data 2014
-    h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
+    h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
+    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-022516.txt" # HURDAT2 NE North Pacific Data
 #    ibRaw = dataDir + "Allstorms.ibtracs_all.v03r06.csv" # IBTrACS ALL v03R06
-    ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r06.csv" # IBTrACS CSC v03R06
+    ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R06
 #    ibRaw = dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS ALL V03R05
 
-    resultsDir = workDir + "Results/ProdReady_20150720/"  #  Location for final data
+    resultsDir = workDir + "Results/Test_ibtRacs_dUPES/"  #  Location for final data (used to be Results/ProdReady_20150720/)
 """ Define JSON filenames """
 namesJS = resultsDir + 'stormnames.js'
 yearsJSON = resultsDir + 'hurricaneYears.json'
@@ -228,6 +231,7 @@ class Storm(object):
     def __init__(self,uid,name):
         self.uid = uid.strip()
         self.name = name.strip()
+        self.basin = None
         self.startTime = None
         self.endTime = None
         self.maxW = float(-1.)
@@ -244,7 +248,14 @@ class Observation(object):
 #         self.time = time.strip()
 #         print(self.time)
 #==============================================================================
-        self.time = dt.datetime.strptime(time,'%Y-%m-%d %H:%M:%S')
+        try:
+            self.time = dt.datetime.strptime(time,'%Y-%m-%d %H:%M:%S')
+#            break
+        except ValueError:
+            try:
+                self.time = dt.datetime.strptime(time,'%m/%d/%Y %H:%M')
+            except:
+                pass
         self.startLat = float(lat)
         self.startLon = float(lon)
         if float(wsp) <= 0:
@@ -314,6 +325,7 @@ with open(ibRaw, "r") as rawObsFile:
      print(thisStorm.startTime)
      nseg = 1
      thisStorm.source = 0            # Flag data source as IBTrACS
+     thisStorm.basin = vals[3]
      """ First storm and observation entered, begin looping """
      while True: # With this and the below break, read to EOF
          lineVals = rawObsFile.readline()
@@ -364,6 +376,7 @@ with open(ibRaw, "r") as rawObsFile:
                  thisStorm.endTime = observation.time 
                  nseg = 1 # New storm ready for next record
                  thisStorm.source = 0 # Flag data source as IBTrACS
+                 thisStorm.basin = vals[3]
      """ EOF found on IBTrACS: Write last data and close out """           
      thisStorm.numSegs = len(thisStorm.segs)
      """ Only keep the storm if there is more than ONE observation: """
@@ -384,7 +397,8 @@ with open(ibRaw, "r") as rawObsFile:
 """ Read HURDAT2 data """
      
 hFiles = [h2AtlRaw, h2nepacRaw]
-#hFiles = []
+hBasin = ["NA","EP"]
+hFiles = []
 hstormNum = [0,0]
 #hFiles = [h2AtlRaw]
 for i, file in enumerate(hFiles):
@@ -411,7 +425,7 @@ for i, file in enumerate(hFiles):
                               vals[1].strip())  # and Name w/out spaces
             thisStorm.numSegs =  int(vals[2])    # Number of Observations
             thisStorm.source = i + 1 # Flag data source as HURDAT ATL or NEPAC
-
+            thisStorm.basin = hBasin(i)
 #            print(thisStorm.uid, thisStorm.name, thisStorm.numSegs)
 
             for ob in range(thisStorm.numSegs):
@@ -497,23 +511,39 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
         """ Check data sources.  If they are not IBTrACS vs HURDAT, then
             the storms are not duplicates.  
             N.B.: This assumes no intra-dataset duplicates, which seems true.
+            **** ALERT *** The above assumption is incorrect.  IBTrACS has 
+            many self-duplicates.  We now check with those and remove duplicates
+            unless they are in different basins. 5/31/2016 DLE """
             
-            The below test works because IBTrACS has a source flag of 
-            0 and hurdat's are 1 or 2.  Therefore the abs(sum) of a hurdat and
-            IBTrACS should equal the abs(difference) of IB and hurdat. 
-            If that equality condition is not true, then the records being 
-            compared are from the same data set and we can skip the comparison.
-            This should prevent dropping near identical storms from the same 
-            source  """
-        if(abs(allSorted[i].source + allStorms[j].source) != 
-            abs(allSorted[i].source - allStorms[j].source)):
-                continue # These are from different data sets
+#==============================================================================
+#         """ The below test works because IBTrACS has a source flag of 
+#             0 and hurdat's are 1 or 2.  Therefore the abs(sum) of a hurdat and
+#             IBTrACS should equal the abs(difference) of IB and hurdat. 
+#             If that equality condition is not true, then the records being 
+#             compared are from the same data set and we can skip the comparison.
+#             This should prevent dropping near identical storms from the same 
+#             source  """
+#         if(abs(allSorted[i].source + allStorms[j].source) != 
+#             abs(allSorted[i].source - allStorms[j].source)):
+#                 continue # These are from different data sets or both IBTrACS
+# # The above seems overly complicated and probably doesn't work.
+#==============================================================================
+
+        """ There can be duplicates in IBTrACS (and maybe Hurdat), so need to 
+        check all storms no matter the source.  However, storms from different
+        basins should not be duplicates, so check for that, since those can 
+        meet the other duplicate requirements, e.g., LIN and CAROLINE."""
+        if(allSorted[i].basin != allStorms[j].basin):
+            continue # These are from different basins so are not duplicates
         
-        """ Check names, but omit the year from the search string"""
+        """ Check names, but omit the year from the search string.
+            We omit the year to be able to search for the names as substrings
+            within each other.  The name is just appended on and will confuse
+            the search logic. """
         AsortedName = allSorted[i].name[:len(allSorted[i].name)-5]  
         AallName =  allStorms[j].name[:len(allStorms[j].name)-5]   
-        AXsortedName = allSorted[i].name[:len(allSorted[i].name)-0]  
-        AXallName =  allStorms[j].name[:len(allStorms[j].name)-0]   
+#        AXsortedName = allSorted[i].name[:len(allSorted[i].name)-0]  
+#        AXallName =  allStorms[j].name[:len(allStorms[j].name)-0]   
         AallInSorted = AsortedName.find(AallName)
         AsortedInAll =  AallName.find(AsortedName)  
         if AallInSorted + AsortedInAll != -2: # Duplicate names found
@@ -532,22 +562,32 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
     if isDuplicate:
 #==============================================================================
 #         print ('\n', nDups, 'sets of duplicate storms found! \n',
-#                'Source, Name, Start Date \n',
-#                allSorted[i].source, allSorted[i].name,
+#                'Source, UID, Name, Start Date \n',
+#                allSorted[i].source, allSorted[i].uid,allSorted[i].name,
 #                allSorted[i].startTime, 'and \n',
-#                allStorms[dupIndex].source,allStorms[dupIndex].name,
+#                allStorms[dupIndex].source,allStorms[dupIndex].uid,
+#                allStorms[dupIndex].name,
 #                allStorms[dupIndex].startTime)
 #==============================================================================
         if use_HURDAT:
-             if allSorted[i].source: #This is a HURDAT record so replace old one
+             if allSorted[i].source > 0: #This is a HURDAT record so replace old one
                  allStorms[dupIndex] = allSorted[i]
              else: # The existing allStorm record is HURDAT, so keep it
                  pass
         else: # Want to use IBTrACS for duplicates
-            if allSorted[i].source: #The new record is HURDAT, so skip it
+            if allSorted[i].source > 0: #The new record is HURDAT, so skip it
                 pass
             else: # The existing allStorm record is HURDAT, so replace it
-                allStorms[dupIndex] = allSorted[i]
+                # Check for duplicates w/in IBTrACS and use dup w/ longer name
+                if allSorted[i].source == allSorted[dupIndex].source:
+                    """Pick the storm with the most names assigned to it.
+                       This is so that it will show up in searches with any
+                       of its potential names.  Also, these tend to be storms
+                       with the longer tracks since they are reported by a 
+                       larger number of reporting groups. """
+                    pass
+                else:                        
+                    allStorms[dupIndex] = allSorted[i]
 
     else: # not a duplicate, so copy it to allStorms
         allStorms.append(allSorted[i])
@@ -591,18 +631,22 @@ for i, storm in enumerate(allStorms):
         """ Find end Lat and Lon for each segment, correcting if needed"""
         """ Make sure LONGITUDE does not change sign across the +-180 line
             Fix this by adjusting the STARTLON of the next segment """
-        if abs(storm.segs[j].startLon - storm.segs[j+1].startLon) > 270.:
-            """ Lon crosses 180, so """
-            if (not BREAK180):
-                """ Adjust next startLons so sign stays consistent. This gets
-                    all following lons as we iterate through them. """
-                storm.segs[j+1].startLon = (
-                    math.copysign(360.0,storm.segs[j].startLon)
-                    + storm.segs[j+1].startLon)
-                print('Adjusting')
-        """ put adjusted or NOT adjusted start lat & lon at (j+1) 
-            in end lat/lon for (j)""" 
-
+#==============================================================================
+#         if abs(storm.segs[j].startLon - storm.segs[j+1].startLon) > 270.:
+#             """ Lon crosses 180, so """
+#             if (not BREAK180):
+#                 """ Adjust next startLons so sign stays consistent. This gets
+#                     all following lons as we iterate through them. """
+#                 adjLon = (
+#                     math.copysign(360.0,storm.segs[j].startLon)
+#                     + storm.segs[j+1].startLon)
+#                 print('Adjusting Lon wrap-around: Lon(i), Lon(i+1), adjLon',
+#                       storm.segs[j].startLon, storm.segs[j+1].startLon,adjLon)
+#                 storm.segs[j+1].startLon = adjLon
+#         """ put adjusted or NOT adjusted start lat & lon at (j+1) 
+#             in end lat/lon for (j)""" 
+# 
+#==============================================================================
         """ NOTE BENE: If start and end are too close, offset End slightly """
         segLength = math.sqrt((storm.segs[j+1].startLat-
             storm.segs[j].startLat)**2
@@ -785,12 +829,19 @@ for i, storm in enumerate(allStorms):
                     (eLat*math.pi/180)/2)))
                 mwLon = earthRadius * mwLon * math.pi/180
                 meLon = earthRadius * meLon * math.pi/180
-                mLat = earthRadius * math.log(math.tan((math.pi/4) + (
-                    (mLat*math.pi/180)/2)))
+                try:
+                    mLat = earthRadius * math.log(math.tan((math.pi/4) + (
+                        (mLat*math.pi/180)/2)))
+                except ValueError:
+                    badLat = mLat
+                    print('Bad mLat is ',badLat, 'for i,stormid',i,storm.uid,
+                          'from source',storm.source)
+                    print('Flush buffer')
+                    exit
 
             """ Done with Web Mercator projection if needed.
-                Now put the coordiantes into the appropriate lists. """
-            """ SEGEMNT Coordinates """
+                Now put the coordinates into the appropriate lists. """
+            """ SEGMENT Coordinates """
             segCoords = [[[sLon, sLat],[mwLon,mLat]],
                          [[meLon,mLat],[eLon, eLat]]]
 #==============================================================================
@@ -1060,8 +1111,10 @@ uniqueYears[:0] = ['All']
 fNamesJS = open(namesJS,'w')
 nameString = 'var stormnames = ' + json.dumps(uniqueNames)
 fNamesJS.write(nameString)
+fNamesJS.close()
 fYears = open(yearsJSON,'w')
 json.dump(uniqueYears,fYears)
+fYears.close()
 
 print("\n    IBTrACS: {0}, HURDAT2_ATL: {1}, HURDAT2_NEPAC: {2}".format(
         ibNum, hstormNum[0], hstormNum[1]),
