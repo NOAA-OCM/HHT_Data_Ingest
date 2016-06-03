@@ -47,34 +47,24 @@ use_HURDAT = True
 dupRange = 5  
 
 """---------------------DEFINE WORKING DIRECTORIES------------------------"""
-workDir = "C:/Data/2015runs/" # On OCM Work Machine
-dataDir = workDir   # Data location
+#workDir = "C:/Data/2015runs/" # On OCM Work Machine
+#dataDir = workDir   # Data location
 #workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 #workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
-#workDir = "T:/DaveE/HHT/" # TEMP drive On OCM Network
-#workDir = "/san1/tmp/DaveE/HHT/" # Temp drive On OCM Linux
-#dataDir = workDir + "Data/"  # Data location
+workDir = "T:/for_DaveE/2015Good/" # TEMP drive On OCM Network
+dataDir = workDir + "Data/"  # Data location
 if TESTING:  
-#    h2nepacRaw = dataDir + "h2nmid.txt" # HURDAT2 NE North Pacific Data
-    h2AtlRaw = dataDir + "hurdat2-TEST.txt"     # HURDAT2 North Atlantic Data
-    ibRaw = dataDir + "newcsc.csv"           # IBTrACS CSC version Data
-#==============================================================================
-#     h2nepacRaw = workDir + "h2NEPACtail.txt" # HURDAT2 NE North Pacific Data
-#     h2AtlRaw = workDir + "h2ATLtail.txt"     # HURDAT2 North Atlantic Data
-#     ibRaw = workDir + "IBtail200.csv"           # IBTrACS CSC version Data
-#==============================================================================
-    resultsDir = workDir + "Results/T_No_180_No_Adjust/"  #  Location for final data
+    h2AtlRaw = dataDir + "Test_hurdat2-1851-2015-021716.txt"     # HURDAT2 North Atlantic Data 2015
+    h2nepacRaw = dataDir + "Test_hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
+    ibRaw = dataDir + "Test_Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
+    resultsDir = workDir + "Results/Test/"  #  Location for final data
 else:
-    #h2AtlRaw = dataDir + "hurdat2-atlantic-1851-2012-060513.txt"     # HURDAT2 North Atlantic Data
-    #h2nepacRaw = dataDir + "hurdat2-nencpac-1949-2013-070714.txt" # HURDAT2 NE North Pacific Data
-    #h2AtlRaw = dataDir + "hurdat2-1851-2013-052714.txt"     # HURDAT2 North Atlantic Data 2013
+#    h2AtlRaw = dataDir + "hurdat2-1851-2015-021716.txt"     # HURDAT2 North Atlantic Data 2015
+#    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
-    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-022516.txt" # HURDAT2 NE North Pacific Data
-#    ibRaw = dataDir + "Allstorms.ibtracs_all.v03r06.csv" # IBTrACS ALL v03R06
-    ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R06
-#    ibRaw = dataDir + "Allstorms.ibtracs_all.v03r05.csv" # IBTrACS ALL V03R05
-
-    resultsDir = workDir + "Results/Test_ibtRacs_dUPES/"  #  Location for final data (used to be Results/ProdReady_20150720/)
+    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
+    ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
+    resultsDir = workDir + "Results/ForProduction2016/"  #  Location for final data (used to be Results/ProdReady_20150720/)
 """ Define JSON filenames """
 namesJS = resultsDir + 'stormnames.js'
 yearsJSON = resultsDir + 'hurricaneYears.json'
@@ -325,7 +315,7 @@ with open(ibRaw, "r") as rawObsFile:
      print(thisStorm.startTime)
      nseg = 1
      thisStorm.source = 0            # Flag data source as IBTrACS
-     thisStorm.basin = vals[3]
+     thisStorm.basin = vals[3].strip()
      """ First storm and observation entered, begin looping """
      while True: # With this and the below break, read to EOF
          lineVals = rawObsFile.readline()
@@ -376,7 +366,7 @@ with open(ibRaw, "r") as rawObsFile:
                  thisStorm.endTime = observation.time 
                  nseg = 1 # New storm ready for next record
                  thisStorm.source = 0 # Flag data source as IBTrACS
-                 thisStorm.basin = vals[3]
+                 thisStorm.basin = vals[3].strip()
      """ EOF found on IBTrACS: Write last data and close out """           
      thisStorm.numSegs = len(thisStorm.segs)
      """ Only keep the storm if there is more than ONE observation: """
@@ -398,9 +388,10 @@ with open(ibRaw, "r") as rawObsFile:
      
 hFiles = [h2AtlRaw, h2nepacRaw]
 hBasin = ["NA","EP"]
-hFiles = []
+#hFiles = []
 hstormNum = [0,0]
-#hFiles = [h2AtlRaw]
+hFiles = [h2nepacRaw]
+hBasin = ["EP"]
 for i, file in enumerate(hFiles):
     print (i, file)
     hstormNum[i] = 0
@@ -425,7 +416,7 @@ for i, file in enumerate(hFiles):
                               vals[1].strip())  # and Name w/out spaces
             thisStorm.numSegs =  int(vals[2])    # Number of Observations
             thisStorm.source = i + 1 # Flag data source as HURDAT ATL or NEPAC
-            thisStorm.basin = hBasin(i)
+            thisStorm.basin = hBasin[i]
 #            print(thisStorm.uid, thisStorm.name, thisStorm.numSegs)
 
             for ob in range(thisStorm.numSegs):
@@ -435,15 +426,31 @@ for i, file in enumerate(hFiles):
                 or lineVals == "\n\r"): # lineVals is false at EOF
                     break # Break on EOF
                 """ Create a new observation record """
-                vals = lineVals.split(", ") # Split the record into fields
+                vals = lineVals.split(",") # Split the record into fields
                 """ Format 2 time fields to one ISO format """
                 otime = vals[0][0:4] +"-"+vals[0][4:6]+"-"+vals[0][6:] + " "
-                otime += vals[1][:2] + ":" + vals[1][2:] + ":00"
+                otime += vals[1][1:3] + ":" + vals[1][3:] + ":00"
 
-                lat = (float(vals[4][:4]) if vals[4][4] == "N" 
-                         else -1. * float(vals[4][:4]))
-                lon = (float(vals[5][:5]) if vals[5][5] == "E" 
-                        else -1. * float(vals[5][:5]))
+#==============================================================================
+#                 lat = (float(vals[4][:4]) if vals[4][4] == "N" 
+#                          else -1. * float(vals[4][:4]))
+#                 try:
+#                     lon = (float(vals[5][:5]) if vals[5][5] == "E" 
+#                         else -1. * float(vals[5][:5]))
+#==============================================================================
+                if (vals[4][len(vals[4])-1] == "N"):
+                    lat = float(vals[4][:len(vals[4])-1]) 
+                else:
+                    lat = -1. * float(vals[4][:len(vals[4])-1])
+                try:
+                    if vals[5][len(vals[5])-1] == "E":
+                        lon = float(vals[5][:len(vals[5])-1])
+                    else:
+                        lon = -1. * float(vals[5][:len(vals[5])-1])
+                except:
+                    print("Bad lon on ob,vals storm",
+                          ob,vals,thisStorm.name)
+                    exit
                 #print(otime, lon, lat)
                 observation = Segment(otime,     # ISO 8601 Time
                                       lat,       # Latitude
@@ -533,9 +540,11 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
         check all storms no matter the source.  However, storms from different
         basins should not be duplicates, so check for that, since those can 
         meet the other duplicate requirements, e.g., LIN and CAROLINE."""
-        if(allSorted[i].basin != allStorms[j].basin):
-            continue # These are from different basins so are not duplicates
-        
+#==============================================================================
+#         if(allSorted[i].basin != allStorms[j].basin):
+#             continue # These are from different basins so are not duplicates
+#         
+#==============================================================================
         """ Check names, but omit the year from the search string.
             We omit the year to be able to search for the names as substrings
             within each other.  The name is just appended on and will confuse
@@ -560,15 +569,13 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
             break
     
     if isDuplicate:
-#==============================================================================
-#         print ('\n', nDups, 'sets of duplicate storms found! \n',
-#                'Source, UID, Name, Start Date \n',
-#                allSorted[i].source, allSorted[i].uid,allSorted[i].name,
-#                allSorted[i].startTime, 'and \n',
-#                allStorms[dupIndex].source,allStorms[dupIndex].uid,
-#                allStorms[dupIndex].name,
-#                allStorms[dupIndex].startTime)
-#==============================================================================
+        print ('\n', nDups, 'sets of duplicate storms found! \n',
+               'Source, UID, Name, Start Date \n',
+               allSorted[i].source, allSorted[i].uid,allSorted[i].name,
+               allSorted[i].startTime, 'and \n',
+               allStorms[dupIndex].source,allStorms[dupIndex].uid,
+               allStorms[dupIndex].name,
+               allStorms[dupIndex].startTime)
         if use_HURDAT:
              if allSorted[i].source > 0: #This is a HURDAT record so replace old one
                  allStorms[dupIndex] = allSorted[i]
@@ -787,7 +794,7 @@ missingSegNum = 0
 missingSegIndx= []
        
 for i, storm in enumerate(allStorms):
-                
+    basin = storm.basin            
     trackCoords = [] # Create list for stormTracks shapefile
     """ Find out if this hurricane has any valid pressure or wind speed obs """
     if (float(storm.minP) < 0.0 and float(storm.maxW) < 0.0 ):
@@ -868,8 +875,11 @@ for i, storm in enumerate(allStorms):
                 sLat = earthRadius * math.log( 
                     math.tan((math.pi/4) + ((thisSegment.startLat*math.pi/180)/2)))
                 eLon = earthRadius * thisSegment.endLon * math.pi/180
-                eLat = earthRadius * math.log( 
-                    math.tan((math.pi/4) + ((thisSegment.endLat*math.pi/180)/2)))
+                try:
+                    eLat = earthRadius * math.log( 
+                        math.tan((math.pi/4) + ((thisSegment.endLat*math.pi/180)/2)))
+                except:
+                    print(thisStorm.name, sLon, sLat, thisSegment.endLat)
             else:
                 sLon = thisSegment.startLon
                 sLat = thisSegment.startLat
@@ -896,7 +906,7 @@ for i, storm in enumerate(allStorms):
                  'Nature','ENSO',
                  'EndLon','EndLat'] """
         """ Extra values to match old (pre-2015) database structure """
-        basin = rptLookup.setdefault(storm.name,Missing)[1]
+#        basin = rptLookup.setdefault(storm.name,Missing)[1]
         begObsHour = dt.datetime.strftime(thisSegment.time,'%H%M')
         dateTime = dt.datetime.strftime(thisSegment.time,'%m/%d/%Y %H')
         dispDate = dt.datetime.strftime(thisSegment.time,'%b %d, %Y')
@@ -913,6 +923,7 @@ for i, storm in enumerate(allStorms):
                            thisSegment.startLon,# Begin Long.
                            thisSegment.pres,    # Min Pressure
                            basin,               # Basin
+#                           thisStorm.basin,               # Basin
                            thisSegment.saffir,  # Saffir Simpson Scale
                            dateTime,            # Date and Time
                            thisSegment.wsp,     # Display Max. Sustained Wind
