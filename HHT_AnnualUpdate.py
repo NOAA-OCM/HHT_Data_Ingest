@@ -40,6 +40,12 @@ SCRAMBLE = True
 WEBMERC = True
 BREAK180 = True
 TESTING = False
+""" If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
+    These appear to be poor quality (DLE's observation) records from different
+    reporting groups and give teh dashed black-colored zig zag look to many
+    tracks in the Indian Ocean. """    
+NO391521 = True  
+
 """ Choose to use either HURDAT2 data as the 'base' data layer (a new
     behaviour) or to use IBTrACS as the 'base' depending on the 
     use_HURDAT variable: """
@@ -47,24 +53,23 @@ use_HURDAT = True
 dupRange = 5  
 
 """---------------------DEFINE WORKING DIRECTORIES------------------------"""
-#workDir = "C:/Data/2015runs/" # On OCM Work Machine
-#dataDir = workDir   # Data location
+workDir = "C:/Data/2015runs/" # On OCM Work Machine
 #workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 #workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
-workDir = "T:/for_DaveE/2015Good/" # TEMP drive On OCM Network
+#workDir = "T:/for_DaveE/2015Good/" # TEMP drive On OCM Network
 dataDir = workDir + "Data/"  # Data location
 if TESTING:  
     h2AtlRaw = dataDir + "Test_hurdat2-1851-2015-021716.txt"     # HURDAT2 North Atlantic Data 2015
     h2nepacRaw = dataDir + "Test_hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "Test_Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-    resultsDir = workDir + "Results/Test/"  #  Location for final data
+    resultsDir = workDir + "Results/Test_No3/"  #  Location for final data
 else:
 #    h2AtlRaw = dataDir + "hurdat2-1851-2015-021716.txt"     # HURDAT2 North Atlantic Data 2015
 #    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-    resultsDir = workDir + "Results/ForProduction2016/"  #  Location for final data (used to be Results/ProdReady_20150720/)
+    resultsDir = workDir + "Results/Production_No3s/"  #  Location for final data (used to be Results/ProdReady_20150720/)
 """ Define JSON filenames """
 namesJS = resultsDir + 'stormnames.js'
 yearsJSON = resultsDir + 'hurricaneYears.json'
@@ -330,9 +335,14 @@ with open(ibRaw, "r") as rawObsFile:
                                        vals[10], # Wind speed
                                        vals[11], # Pressure
                                        vals[7] ) # Nature
-                 thisStorm.endTime = observation.time #update end time
-                 thisStorm.segs.append(observation)
-                 nseg += 1
+                 ibHour = observation.time.hour*100+observation.time.minute
+                 if NO391521 and (ibHour == 300 or ibHour == 900 or
+                                  ibHour == 1500 or ibHour == 2100):
+                    pass #Skip writing this observation
+                 else:
+                     thisStorm.endTime = observation.time #update end time
+                     thisStorm.segs.append(observation)
+                     nseg += 1
              else: #Found a new storm so...
                  thisStorm.numSegs = len(thisStorm.segs)
 #                 allStorms.append(thisStorm) # Add old storm to allStorms
@@ -390,8 +400,8 @@ hFiles = [h2AtlRaw, h2nepacRaw]
 hBasin = ["NA","EP"]
 #hFiles = []
 hstormNum = [0,0]
-hFiles = [h2nepacRaw]
-hBasin = ["EP"]
+#hFiles = [h2nepacRaw]
+#hBasin = ["EP"]
 for i, file in enumerate(hFiles):
     print (i, file)
     hstormNum[i] = 0
