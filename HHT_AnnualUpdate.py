@@ -71,7 +71,7 @@ else:
     h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-    resultsDir = workDir + "Results/Production20160613/"  #  Location for final data (used to be Results/ProdReady_20150720/)
+    resultsDir = workDir + "Results/Prod20160613IBTrACS_IDS/"  #  Location for final data (used to be Results/ProdReady_20150720/)
 
 """ Create the needed Results directory if it doesn't exist """
 os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
@@ -619,17 +619,24 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
             break
     
     if isDuplicate:
-        logFile.write('\n' + str(nDups) + 'sets of duplicate storms found! \n' +
-               'Source, UID, Name, Start Date \n' +
-               str(allSorted[i].source) + str(allSorted[i].uid) +
-               allSorted[i].name +
-               str(allSorted[i].startTime) + 'and \n' +
-               str(allStorms[dupIndex].source) + str(allStorms[dupIndex].uid) +
-               allStorms[dupIndex].name +
+        logFile.write('\n' + str(nDups) + ' sets of duplicate storms found! \n' +
+               'Source\tUID\t\tName\tStart Date \n' +
+               str(allSorted[i].source) +"\t"+ str(allSorted[i].uid) +"\t"+
+               allSorted[i].name +"\t"+
+               str(allSorted[i].startTime) + ' and \n' +
+               str(allStorms[dupIndex].source) +"\t"+ 
+               str(allStorms[dupIndex].uid) +"\t"+
+               allStorms[dupIndex].name +"\t"+
                str(allStorms[dupIndex].startTime))
         if use_HURDAT:
              if allSorted[i].source > 0: #This is a HURDAT record so replace old one
-                 allStorms[dupIndex] = allSorted[i]
+                """ NOTE BENE: If choosing HURDAT over IBTrACS, then replace 
+                the Unique idenitifier with teh IBTrACS ID.  That is needed 
+                for the Storm Details lookup from the IBTrACS web site! 
+                DLE 6/13/2016 """
+                IBTrACS_uid = allSorted[i].uid
+                allStorms[dupIndex] = allSorted[i]
+                allStorms[dupIndex].uid = IBTrACS_uid
              else: # The existing allStorm record is HURDAT, so keep it
                  pass
         else: # Want to use IBTrACS for duplicates
@@ -643,6 +650,7 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
                        of its potential names.  Also, these tend to be storms
                        with the longer tracks since they are reported by a 
                        larger number of reporting groups. """
+                    """ STILL NEEDS to Be FIXED """
                     pass
                 else:                        
                     allStorms[dupIndex] = allSorted[i]
