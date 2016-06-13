@@ -27,6 +27,7 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
          2016-05-16: test runs with 2015 ibtracs and fixed Hurdat2
 """
 
+import os
 import math
 import random
 import json
@@ -56,20 +57,37 @@ dupRange = 5
 workDir = "C:/Data/2015runs/" # On OCM Work Machine
 #workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 #workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
-#workDir = "T:/for_DaveE/2015Good/" # TEMP drive On OCM Network
+workDir = "T:/for_DaveE/2015Good/" # TEMP drive On OCM Network
 dataDir = workDir + "Data/"  # Data location
 if TESTING:  
     h2AtlRaw = dataDir + "Test_hurdat2-1851-2015-021716.txt"     # HURDAT2 North Atlantic Data 2015
     h2nepacRaw = dataDir + "Test_hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "Test_Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-    resultsDir = workDir + "Results/Test_No3/"  #  Location for final data
+#    ibRaw = dataDir + "Test_Allstorms.ibtracs_csc.Kolia.csv" # IBTrACS CSC v03R08
+    resultsDir = workDir + "Results/Test_nullMissWindSpeed/"  #  Location for final data
 else:
 #    h2AtlRaw = dataDir + "hurdat2-1851-2015-021716.txt"     # HURDAT2 North Atlantic Data 2015
 #    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-    resultsDir = workDir + "Results/Production_No3s/"  #  Location for final data (used to be Results/ProdReady_20150720/)
+    resultsDir = workDir + "Results/Production20160613/"  #  Location for final data (used to be Results/ProdReady_20150720/)
+
+""" Create the needed Results directory if it doesn't exist """
+os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
+""" Adding an ingest.log ascii file to record QA/QC results in the Results 
+    directory. """
+logFileName = resultsDir + "ingest.log"
+logFile = open(logFileName,'w')
+
+""" Specify what HURDAT years to run.  If hFIles is empty, then skip HURDAT
+    (ONLY USED FOR TESTING IBTrACS SPECIFIC CODE) """
+hFiles = [h2AtlRaw, h2nepacRaw]
+hBasin = ["NA","EP"]
+#hFiles = [h2nepacRaw]
+#hBasin = ["EP"]
+#hFiles = []
+
 """ Define JSON filenames """
 namesJS = resultsDir + 'stormnames.js'
 yearsJSON = resultsDir + 'hurricaneYears.json'
@@ -183,6 +201,12 @@ def getCat(nature, wind):
         
     """
     
+    """ New (9 June 2016) logic: classify everything as a tropical
+        system according to its wind speed.  Then only reclassify those
+        that specifically are listed as extra-tropical.  This should get
+        rid of many of the NR results, which occur in areas beyond the US 
+        reporting areas and which do not use the Saffir-Simpson Scale.
+        """
     if wind >= 137:
         catSuffix = 'H5'
     elif wind >= 113:
@@ -194,31 +218,57 @@ def getCat(nature, wind):
     elif wind >= 64:
         catSuffix = 'H1'
     elif wind >= 34:
-        catSuffix = 'S' # Storm
+        catSuffix = 'TS' # Storm
     elif wind >= 0:
-        catSuffix = 'D' # Depression
+        catSuffix = 'TD' # Depression
     else:
-        return "NR"
+        catSuffix = "NR"
+#        print('No Wind speed, Nature, wind, suffix = ',nature,wind,catSuffix)
         
     """ Now figure out what it is """
-    if (catSuffix[0] == 'H' and (nature[0] == 'H' or nature[0] == 'T' 
-        or nature == 'NR' or nature == 'MX' )):
-        return catSuffix # It is a Hurricane strength and not extra-tropical
-    elif (nature[0] == 'E'):
+    if (nature[0] == 'E'):
         return 'ET'
-    elif (nature[0] == 'T' or nature[0] == 'P'):
-        return 'T'+catSuffix
-    elif (nature[0] == 'S'):
-        return 'S'+catSuffix
-    elif (nature == 'DS'): # Needed for IBTrACS Tropical Depressions
-        return 'TD'        
-    elif (nature == 'DB' or nature == 'LO' or nature == 'WV'):
-        return 'DS' 
-    elif (nature[0] == 'N' or nature[0] == 'M' or nature == 'NR'):
-        return 'NR'
     else:
-        print('ERROR in logic, Nature, wind, suffix = ',nature,wind, catSuffix)
-        return 'Error_' + catSuffix
+        return catSuffix
+    
+#==============================================================================
+#     if wind >= 137:
+#         catSuffix = 'H5'
+#     elif wind >= 113:
+#         catSuffix = 'H4'
+#     elif wind >= 96:
+#         catSuffix = 'H3'
+#     elif wind >= 83:
+#         catSuffix = 'H2'
+#     elif wind >= 64:
+#         catSuffix = 'H1'
+#     elif wind >= 34:
+#         catSuffix = 'S' # Storm
+#     elif wind >= 0:
+#         catSuffix = 'D' # Depression
+#     else:
+#         return "NR"
+#         
+#     """ Now figure out what it is """
+#     if (catSuffix[0] == 'H' and (nature[0] == 'H' or nature[0] == 'T' 
+#         or nature == 'NR' or nature == 'MX' )):
+#         return catSuffix # It is a Hurricane strength and not extra-tropical
+#     elif (nature[0] == 'E'):
+#         return 'ET'
+#     elif (nature[0] == 'T' or nature[0] == 'P'):
+#         return 'T'+catSuffix
+#     elif (nature[0] == 'S'):
+#         return 'S'+catSuffix
+#     elif (nature == 'DS'): # Needed for IBTrACS Tropical Depressions
+#         return 'TD'        
+#     elif (nature == 'DB' or nature == 'LO' or nature == 'WV'):
+#         return 'DS' 
+#     elif (nature[0] == 'N' or nature[0] == 'M' or nature == 'NR'):
+#         return 'NR'
+#     else:
+#         print('ERROR in logic, Nature, wind, suffix = ',nature,wind, catSuffix)
+#         return 'Error_' + catSuffix
+#==============================================================================
 """------------------------END OF getCat-------------------------------"""
 
 """ Create needed Objects """
@@ -255,6 +305,8 @@ class Observation(object):
         self.startLon = float(lon)
         if float(wsp) <= 0:
             self.wsp = float(-1.0)
+#            self.wsp = float('NaN') #try NaN for missing wind speeds:
+#            NAN not working with graphing portion of web site.  Go back to -1 as flag
         else:
             self.wsp = float(wsp)
         if float(pres) <= 800.:
@@ -396,12 +448,14 @@ with open(ibRaw, "r") as rawObsFile:
 
 """ Read HURDAT2 data """
      
-hFiles = [h2AtlRaw, h2nepacRaw]
-hBasin = ["NA","EP"]
-#hFiles = []
+#==============================================================================
+# hFiles = [h2AtlRaw, h2nepacRaw]
+# hBasin = ["NA","EP"]
+# #hFiles = []
+# #hFiles = [h2nepacRaw]
+# #hBasin = ["EP"]
+#==============================================================================
 hstormNum = [0,0]
-#hFiles = [h2nepacRaw]
-#hBasin = ["EP"]
 for i, file in enumerate(hFiles):
     print (i, file)
     hstormNum[i] = 0
@@ -532,21 +586,7 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
             many self-duplicates.  We now check with those and remove duplicates
             unless they are in different basins. 5/31/2016 DLE """
             
-#==============================================================================
-#         """ The below test works because IBTrACS has a source flag of 
-#             0 and hurdat's are 1 or 2.  Therefore the abs(sum) of a hurdat and
-#             IBTrACS should equal the abs(difference) of IB and hurdat. 
-#             If that equality condition is not true, then the records being 
-#             compared are from the same data set and we can skip the comparison.
-#             This should prevent dropping near identical storms from the same 
-#             source  """
-#         if(abs(allSorted[i].source + allStorms[j].source) != 
-#             abs(allSorted[i].source - allStorms[j].source)):
-#                 continue # These are from different data sets or both IBTrACS
-# # The above seems overly complicated and probably doesn't work.
-#==============================================================================
-
-        """ There can be duplicates in IBTrACS (and maybe Hurdat), so need to 
+        """ There can be duplicates in IBTrACS (and also Hurdat), so need to 
         check all storms no matter the source.  However, storms from different
         basins should not be duplicates, so check for that, since those can 
         meet the other duplicate requirements, e.g., LIN and CAROLINE."""
@@ -579,13 +619,14 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
             break
     
     if isDuplicate:
-        print ('\n', nDups, 'sets of duplicate storms found! \n',
-               'Source, UID, Name, Start Date \n',
-               allSorted[i].source, allSorted[i].uid,allSorted[i].name,
-               allSorted[i].startTime, 'and \n',
-               allStorms[dupIndex].source,allStorms[dupIndex].uid,
-               allStorms[dupIndex].name,
-               allStorms[dupIndex].startTime)
+        logFile.write('\n' + str(nDups) + 'sets of duplicate storms found! \n' +
+               'Source, UID, Name, Start Date \n' +
+               str(allSorted[i].source) + str(allSorted[i].uid) +
+               allSorted[i].name +
+               str(allSorted[i].startTime) + 'and \n' +
+               str(allStorms[dupIndex].source) + str(allStorms[dupIndex].uid) +
+               allStorms[dupIndex].name +
+               str(allStorms[dupIndex].startTime))
         if use_HURDAT:
              if allSorted[i].source > 0: #This is a HURDAT record so replace old one
                  allStorms[dupIndex] = allSorted[i]
@@ -628,9 +669,11 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
 """ -------------------- All storms are now unique -------------------- """
 
 """ Now process unique storms for QA/QC and finding Saffir-Simpson value """
-""" Make a list of all the Nature types. Needed for setting up enso logic"""
-allNatures = []
-""" Make lists for names and years.  Needed for JSON files used by HHT site."""
+#==============================================================================
+# """ Make a list of all the Nature types. Needed for setting up enso logic"""
+# allNatures = []
+# """ Make lists for names and years.  Needed for JSON files used by HHT site."""
+#==============================================================================
 stormNames = []
 stormYears = []
 #for i, storm in enumerate(allStorms[11700:11802:4]):
@@ -642,9 +685,7 @@ for i, storm in enumerate(allStorms):
     j = -1  # Make a new counter in case we add segments by splitting around 180
     for jj in range(0,jLast):
         j+= 1 
-        """ For each segment in the storm find: """
-        allNatures.append(storm.segs[j].nature)
-
+        
         """ Find end Lat and Lon for each segment, correcting if needed"""
         """ Make sure LONGITUDE does not change sign across the +-180 line
             Fix this by adjusting the STARTLON of the next segment """
@@ -681,7 +722,12 @@ for i, storm in enumerate(allStorms):
         """ --- Saffir-Simpson value for each segment"""
         storm.segs[j].saffir = getCat(storm.segs[j].nature, 
                                     (storm.segs[j].wsp))
-
+#==============================================================================
+#         """ For each segment in the storm find: """
+# #        allNatures.append(storm.segs[j].nature)
+#         allNatures.append(storm.segs[j].saffir)
+# 
+#==============================================================================
         """ Get data for ENSO stage for each segment by start time """
        # thisKey = storm.segs[j].time[:7]
         thisKey = storm.segs[j].time.strftime('%Y-%m')
