@@ -71,7 +71,7 @@ else:
     h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-    resultsDir = workDir + "Results/Prod20160613IBTrACS_IDS/"  #  Location for final data (used to be Results/ProdReady_20150720/)
+    resultsDir = workDir + "Results/Prod20160613IBTrACS_IDS2/"  #  Location for final data (used to be Results/ProdReady_20150720/)
 
 """ Create the needed Results directory if it doesn't exist """
 os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
@@ -634,9 +634,9 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
                 the Unique idenitifier with teh IBTrACS ID.  That is needed 
                 for the Storm Details lookup from the IBTrACS web site! 
                 DLE 6/13/2016 """
-                IBTrACS_uid = allSorted[i].uid
+                allSorted[i].uid = allStorms[dupIndex].uid #replace w/ IBTrACS UID
                 allStorms[dupIndex] = allSorted[i]
-                allStorms[dupIndex].uid = IBTrACS_uid
+#                allStorms[dupIndex].uid = IBTrACS_uid #And replace HURDAT one with it
              else: # The existing allStorm record is HURDAT, so keep it
                  pass
         else: # Want to use IBTrACS for duplicates
@@ -1190,6 +1190,7 @@ fNamesJS.close()
 fYears = open(yearsJSON,'w')
 json.dump(uniqueYears,fYears)
 fYears.close()
+logFile.close()
 
 print("\n    IBTrACS: {0}, HURDAT2_ATL: {1}, HURDAT2_NEPAC: {2}".format(
         ibNum, hstormNum[0], hstormNum[1]),
