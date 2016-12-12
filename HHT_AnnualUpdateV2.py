@@ -39,7 +39,7 @@ import stormReportDownload
 """ Declarations and Parameters """
 SCRAMBLE = True
 WEBMERC = True
-BREAK180 = True
+BREAK180 = False
 TESTING = False
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
@@ -73,7 +73,7 @@ else:
     h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-    resultsDir = workDir + "Results/No_NAorEP/"  #  Location for final data (used to be Results/ProdReady_20150720/)
+    resultsDir = workDir + "Results/No_NAorEP_IBTrOnlyNOB180/"  #  Location for final data (used to be Results/ProdReady_20150720/)
 
 """ Create the needed Results directory if it doesn't exist """
 os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
@@ -88,7 +88,7 @@ hFiles = [h2AtlRaw, h2nepacRaw]
 hBasin = ["NA","EP"]
 #hFiles = [h2nepacRaw]
 #hBasin = ["EP"]
-#hFiles = []
+hFiles = []
 
 """ Define JSON filenames """
 namesJS = resultsDir + 'stormnames.js'
@@ -675,22 +675,20 @@ for i, storm in enumerate(allStorms):
         """ Find end Lat and Lon for each segment, correcting if needed"""
         """ Make sure LONGITUDE does not change sign across the +-180 line
             Fix this by adjusting the STARTLON of the next segment """
-#==============================================================================
-#         if abs(storm.segs[j].startLon - storm.segs[j+1].startLon) > 270.:
-#             """ Lon crosses 180, so """
-#             if (not BREAK180):
-#                 """ Adjust next startLons so sign stays consistent. This gets
-#                     all following lons as we iterate through them. """
-#                 adjLon = (
-#                     math.copysign(360.0,storm.segs[j].startLon)
-#                     + storm.segs[j+1].startLon)
-#                 print('Adjusting Lon wrap-around: Lon(i), Lon(i+1), adjLon',
-#                       storm.segs[j].startLon, storm.segs[j+1].startLon,adjLon)
-#                 storm.segs[j+1].startLon = adjLon
-#         """ put adjusted or NOT adjusted start lat & lon at (j+1) 
-#             in end lat/lon for (j)""" 
-# 
-#==============================================================================
+        if abs(storm.segs[j].startLon - storm.segs[j+1].startLon) > 270.:
+            """ Lon crosses 180, so """
+            if (not BREAK180):
+                """ Adjust next startLons so sign stays consistent. This gets
+                    all following lons as we iterate through them. """
+                adjLon = (
+                    math.copysign(360.0,storm.segs[j].startLon)
+                    + storm.segs[j+1].startLon)
+                print('Adjusting Lon wrap-around: Lon(i), Lon(i+1), adjLon',
+                      storm.segs[j].startLon, storm.segs[j+1].startLon,adjLon)
+                storm.segs[j+1].startLon = adjLon
+        """ put adjusted or NOT adjusted start lat & lon at (j+1) 
+            in end lat/lon for (j)""" 
+
         """ NOTE BENE: If start and end are too close, offset End slightly """
         segLength = math.sqrt((storm.segs[j+1].startLat-
             storm.segs[j].startLat)**2
