@@ -54,13 +54,13 @@ use_HURDAT = True
 dupRange = 5  
 
 """---------------------DEFINE WORKING DIRECTORIES------------------------"""
-#workDir = "C:/Data/2015runs/" # On OCM Work Machine
-workDir = "C:/GIS/Hurricanes/" # On Home Machine
+workDir = "C:/Data/2015runs/" # On OCM Work Machine
+#workDir = "C:/GIS/Hurricanes/" # On Home Machine
 #workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 #workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
 #workDir = "T:/for_DaveE/2015Good/" # TEMP drive On OCM Network
-#dataDir = workDir + "Data/"  # Data location
-dataDir = workDir + "Data/2015runs/"
+dataDir = workDir + "Data/"  # Data location
+#dataDir = workDir + "Data/2015runs/"
 if TESTING:  
     h2AtlRaw = dataDir + "Test_hurdat2-1851-2015-021716.txt"     # HURDAT2 North Atlantic Data 2015
     h2nepacRaw = dataDir + "Test_hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
@@ -73,7 +73,7 @@ else:
     h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-    resultsDir = workDir + "Results/Prod20160613IBTrACS_IDS2/"  #  Location for final data (used to be Results/ProdReady_20150720/)
+    resultsDir = workDir + "Results/No_NAorEP/"  #  Location for final data (used to be Results/ProdReady_20150720/)
 
 """ Create the needed Results directory if it doesn't exist """
 os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
@@ -147,9 +147,9 @@ Missing=[None, None]
 # print('\n\n')
 #==============================================================================
 """ Processing functions """
-"""--------------------------------------------------------------------"""
-def getStormReport(name,year):
-    return "no report"
+#"""--------------------------------------------------------------------"""
+#def getStormReport(name,year):
+#    return "no report"
 """--------------------------------------------------------------------"""
 def getCat(nature, wind):
     """ This function returns the appropriate classification of 
@@ -234,43 +234,6 @@ def getCat(nature, wind):
         return catSuffix
     
 #==============================================================================
-#     if wind >= 137:
-#         catSuffix = 'H5'
-#     elif wind >= 113:
-#         catSuffix = 'H4'
-#     elif wind >= 96:
-#         catSuffix = 'H3'
-#     elif wind >= 83:
-#         catSuffix = 'H2'
-#     elif wind >= 64:
-#         catSuffix = 'H1'
-#     elif wind >= 34:
-#         catSuffix = 'S' # Storm
-#     elif wind >= 0:
-#         catSuffix = 'D' # Depression
-#     else:
-#         return "NR"
-#         
-#     """ Now figure out what it is """
-#     if (catSuffix[0] == 'H' and (nature[0] == 'H' or nature[0] == 'T' 
-#         or nature == 'NR' or nature == 'MX' )):
-#         return catSuffix # It is a Hurricane strength and not extra-tropical
-#     elif (nature[0] == 'E'):
-#         return 'ET'
-#     elif (nature[0] == 'T' or nature[0] == 'P'):
-#         return 'T'+catSuffix
-#     elif (nature[0] == 'S'):
-#         return 'S'+catSuffix
-#     elif (nature == 'DS'): # Needed for IBTrACS Tropical Depressions
-#         return 'TD'        
-#     elif (nature == 'DB' or nature == 'LO' or nature == 'WV'):
-#         return 'DS' 
-#     elif (nature[0] == 'N' or nature[0] == 'M' or nature == 'NR'):
-#         return 'NR'
-#     else:
-#         print('ERROR in logic, Nature, wind, suffix = ',nature,wind, catSuffix)
-#         return 'Error_' + catSuffix
-#==============================================================================
 """------------------------END OF getCat-------------------------------"""
 
 """ Create needed Objects """
@@ -346,6 +309,7 @@ numGoodObs = 0
     
 ibNum = 0 # Initialize IBTrACS storm counter, 
           # it will increment when storm end is found
+ibSkipNum = 0  # Number of NA and EP storms skipped to prevent HURDAT2 duplicates
 print ('IBTrACS file: ', ibRaw)    
 with open(ibRaw, "r") as rawObsFile:
      head1 = rawObsFile.readline()
@@ -402,7 +366,13 @@ with open(ibRaw, "r") as rawObsFile:
 #                 allStorms.append(thisStorm) # Add old storm to allStorms
                  """ Only keep the storm if there is more than ONE observation: """
                  if(thisStorm.numSegs > 1):
-                     allStorms.append(thisStorm) # Add old storm to allStorms
+                     # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
+                     if(thisStorm.basin != "NA" and thisStorm.basin != "EP"):
+                         allStorms.append(thisStorm) # Add old storm to allStorms
+#                         print("IBTrACS basin",thisStorm.basin)
+                     else:
+                         ibSkipNum += 1
+#                         print("Duplicate in basin",thisStorm.basin)
                  else:
                      numSinglePoint += 1
                  ibNum += 1 # Increment counter for IBTrACS storms
@@ -435,7 +405,13 @@ with open(ibRaw, "r") as rawObsFile:
      thisStorm.numSegs = len(thisStorm.segs)
      """ Only keep the storm if there is more than ONE observation: """
      if(thisStorm.numSegs > 1):
-         allStorms.append(thisStorm) # Add old storm to allStorms
+         # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
+         if(thisStorm.basin != "NA" and thisStorm.basin != "EP"):
+             allStorms.append(thisStorm) # Add old storm to allStorms
+#             print("IBTrACS basin",thisStorm.basin)
+         else:
+             ibSkipNum += 1
+#             print("Duplicate in basin",thisStorm.basin)
      else:
          numSinglePoint += 1
          
@@ -1194,10 +1170,12 @@ json.dump(uniqueYears,fYears)
 fYears.close()
 logFile.close()
 
-print("\n    IBTrACS: {0}, HURDAT2_ATL: {1}, HURDAT2_NEPAC: {2}".format(
-        ibNum, hstormNum[0], hstormNum[1]),
+print("\n    All IBTrACS: {0}, Skipped NA and EP: {1}, Used: {2}".format(
+        ibNum, ibSkipNum, ibNum-ibSkipNum),
+        "\n    HURDAT2_ATL: {0}, HURDAT2_NEPAC: {1}".format(
+        hstormNum[0], hstormNum[1]),
         "\nQA: TOTAL STORMS INGESTED = {0}\n".format(
-        ibNum+hstormNum[0]+hstormNum[1]), 
+        (ibNum-ibSkipNum)+hstormNum[0]+hstormNum[1]), 
         "    Single Obs storms removed: {0}, Multi-Obs storms kept: {1}"
         .format(numSinglePoint,len(allSorted)),
         "\nQA: STORMS LENGTH CHECKED = {0} \n(Should equal total ingested.)\n"
