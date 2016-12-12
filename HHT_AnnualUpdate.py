@@ -40,7 +40,7 @@ import stormReportDownload
 SCRAMBLE = True
 WEBMERC = True
 BREAK180 = True
-TESTING = False
+TESTING = True
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
     reporting groups and give teh dashed black-colored zig zag look to many
@@ -57,7 +57,7 @@ dupRange = 5
 workDir = "C:/Data/2015runs/" # On OCM Work Machine
 #workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 #workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
-workDir = "T:/for_DaveE/2015Good/" # TEMP drive On OCM Network
+#workDir = "T:/for_DaveE/2015Good/" # TEMP drive On OCM Network
 dataDir = workDir + "Data/"  # Data location
 if TESTING:  
     h2AtlRaw = dataDir + "Test_hurdat2-1851-2015-021716.txt"     # HURDAT2 North Atlantic Data 2015
@@ -1190,7 +1190,6 @@ fNamesJS.close()
 fYears = open(yearsJSON,'w')
 json.dump(uniqueYears,fYears)
 fYears.close()
-logFile.close()
 
 print("\n    IBTrACS: {0}, HURDAT2_ATL: {1}, HURDAT2_NEPAC: {2}".format(
         ibNum, hstormNum[0], hstormNum[1]),
@@ -1214,3 +1213,28 @@ print("\n\nIf the above QA numbers are consistent, there will be ",
       numGoodObs,'\nstorms in the "good" shapefiles,\n',
       "and",numAllMissing,'storms in the "missing" shapefiles. \n',
       'All should be ingested into the database for use on the HHT site.')
+
+#foo = ["\n    IBTrACS: {0}, HURDAT2_ATL: {1}, HURDAT2_NEPAC: {2}".format(
+#        ibNum, hstormNum[0], hstormNum[1]),
+#        "\nQA: TOTAL STORMS INGESTED = {0}\n".format(
+#        ibNum+hstormNum[0]+hstormNum[1]), 
+#        "    Single Obs storms removed: {0}, Multi-Obs storms kept: {1}"
+#        .format(numSinglePoint,len(allSorted)),
+#        "\nQA: STORMS LENGTH CHECKED = {0} \n(Should equal total ingested.)\n"
+#        .format(len(allSorted)+numSinglePoint),
+#        "    Duplicate storms removed: {0}, Unique storms = {1}"
+#        .format(nDups,len(allStorms)), 
+#        "\nQA: STORMS PROCESSED for DUPLICATES = {0}\n".format(
+#        nDups+len(allStorms)),
+#        "    (This should equal number of Multi-obs storms.)\n\n",
+#        "    Storms with no wind or pressure:",numAllMissing,
+#       ", Good storm tracks: ",numGoodObs, 
+#       "\nQA: STORMS CHECKED FOR WIND AND PRESSURE VALUES = {0}\n"
+#       .format(numAllMissing+numGoodObs),
+#        "    (This should equal number of UNIQUE storms.)\n",
+#       "\n\nIf the above QA numbers are consistent, there will be ",
+#      numGoodObs,'\nstorms in the "good" shapefiles,\n',
+#      "and",numAllMissing,'storms in the "missing" shapefiles. \n',
+#      'All should be ingested into the database for use on the HHT site.\n']
+#logFile.write(' '.join(foo))
+logFile.close()
