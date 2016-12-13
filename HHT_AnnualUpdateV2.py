@@ -39,7 +39,7 @@ import stormReportDownload
 """ Declarations and Parameters """
 SCRAMBLE = True
 WEBMERC = True
-BREAK180 = False
+BREAK180 = True
 TESTING = False
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
@@ -73,7 +73,7 @@ else:
     h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-    resultsDir = workDir + "Results/No_NAorEP_IBTrOnlyNOB180/"  #  Location for final data (used to be Results/ProdReady_20150720/)
+    resultsDir = workDir + "Results/No_NAorEP_Tues/"  #  Location for final data (used to be Results/ProdReady_20150720/)
 
 """ Create the needed Results directory if it doesn't exist """
 os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
@@ -110,10 +110,10 @@ if WEBMERC:
     earthCircumference = math.pi * 2.0 * earthRadius  
     """ Define EPSG:3857 -- WGS84 Web Mercator (Auxiliary Sphere) Projection string 
         http://spatialreference.org/ref/sr-org/7483/ """
-    #epsg = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs'
+    epsg = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs'
     #epsg = 'PROJCS["WGS 84 / Pseudo-Mercator",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["Degree",0.017453292519943295]],PROJECTION["Mercator"],PARAMETER["central_meridian",0],PARAMETER["scale_factor",1],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["Meter",1]]'
     """ ESRI prj file below """
-    epsg = 'PROJCS["WGS_1984_Web_Mercator_Auxiliary_Sphere",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Mercator_Auxiliary_Sphere"],PARAMETER["False_Easting",0.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",0.0],PARAMETER["Standard_Parallel_1",0.0],PARAMETER["Auxiliary_Sphere_Type",0.0],UNIT["Meter",1.0]]'
+    #epsg = 'PROJCS["WGS_1984_Web_Mercator_Auxiliary_Sphere",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Mercator_Auxiliary_Sphere"],PARAMETER["False_Easting",0.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",0.0],PARAMETER["Standard_Parallel_1",0.0],PARAMETER["Auxiliary_Sphere_Type",0.0],UNIT["Meter",1.0]]'
 else:    
     """ Define WGS84 Geographic Projection string """
     epsg = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
@@ -367,7 +367,7 @@ with open(ibRaw, "r") as rawObsFile:
                  """ Only keep the storm if there is more than ONE observation: """
                  if(thisStorm.numSegs > 1):
                      # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
-                     if(thisStorm.basin != "NA" and thisStorm.basin != "EP"):
+                     if(thisStorm.basin[0:2] != "NA" and thisStorm.basin[0:2] != "EP"):
                          allStorms.append(thisStorm) # Add old storm to allStorms
 #                         print("IBTrACS basin",thisStorm.basin)
                      else:
@@ -406,7 +406,7 @@ with open(ibRaw, "r") as rawObsFile:
      """ Only keep the storm if there is more than ONE observation: """
      if(thisStorm.numSegs > 1):
          # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
-         if(thisStorm.basin != "NA" and thisStorm.basin != "EP"):
+         if(thisStorm.basin[0:2] != "NA" and thisStorm.basin[0:2] != "EP"):
              allStorms.append(thisStorm) # Add old storm to allStorms
 #             print("IBTrACS basin",thisStorm.basin)
          else:
