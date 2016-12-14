@@ -73,7 +73,7 @@ else:
     h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-    resultsDir = workDir + "Results/No_NAorEP_Tues/"  #  Location for final data (used to be Results/ProdReady_20150720/)
+    resultsDir = workDir + "Results/No_IB_NAorEP_Weds/"  #  Location for final data (used to be Results/ProdReady_20150720/)
 
 """ Create the needed Results directory if it doesn't exist """
 os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
@@ -88,7 +88,7 @@ hFiles = [h2AtlRaw, h2nepacRaw]
 hBasin = ["NA","EP"]
 #hFiles = [h2nepacRaw]
 #hBasin = ["EP"]
-hFiles = []
+#hFiles = []
 
 """ Define JSON filenames """
 namesJS = resultsDir + 'stormnames.js'
@@ -427,11 +427,7 @@ with open(ibRaw, "r") as rawObsFile:
 """ Read HURDAT2 data """
      
 #==============================================================================
-# hFiles = [h2AtlRaw, h2nepacRaw]
-# hBasin = ["NA","EP"]
-# #hFiles = []
-# #hFiles = [h2nepacRaw]
-# #hBasin = ["EP"]
+
 #==============================================================================
 hstormNum = [0,0]
 for i, file in enumerate(hFiles):
@@ -1018,7 +1014,7 @@ for i, storm in enumerate(allStorms):
                'StrmRptURL','In10sOrder' # End of Previous Attributes
                'NumObs','ENSO']"""
     """ Extra values to match old (pre-2015) database structure """
-    basin = rptLookup.setdefault(storm.name,Missing)[1]
+#    basin = rptLookup.setdefault(storm.name,Missing)[1]
     rptURL = rptLookup.setdefault(storm.name,Missing)[0]
     strmStart = storm.segs[0].time
     strmEnd = storm.segs[len(storm.segs)-1].time

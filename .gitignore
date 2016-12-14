@@ -1,0 +1,15 @@
+*~
+*.elc
+*.pyc
+*#*#
+*.RData
+*.Rhistory
+*.dbf
+*.prj
+*.shp
+*.shx
+*.mwsymb
+*.zip
+*.gz
+.Rproj.user
+__pycache__/*

@@ -43,9 +43,9 @@ def rptDict():
         syear.append(storm[2].text)
 #        basin.append(storm[3].text)
         if (storm[3].text) == "Atlantic" :
-            basin.append("AL")
+            basin.append("NA")  # Only for the North Atlantic via HURDAT2
         else:
-            basin.append("EP")
+            basin.append("EP")  # Or for the North East Pacific via HURDAT2  
         #print ((longName + " " + syear[i]))
         strName.append(longName.upper() + " " + syear[i])
         
