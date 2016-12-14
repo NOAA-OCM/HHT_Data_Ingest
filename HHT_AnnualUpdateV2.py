@@ -73,7 +73,7 @@ else:
     h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-    resultsDir = workDir + "Results/No_IB_NAorEP_Weds/"  #  Location for final data (used to be Results/ProdReady_20150720/)
+    resultsDir = workDir + "Results/NewDups_Weds/"  #  Location for final data (used to be Results/ProdReady_20150720/)
 
 """ Create the needed Results directory if it doesn't exist """
 os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
@@ -110,10 +110,25 @@ if WEBMERC:
     earthCircumference = math.pi * 2.0 * earthRadius  
     """ Define EPSG:3857 -- WGS84 Web Mercator (Auxiliary Sphere) Projection string 
         http://spatialreference.org/ref/sr-org/7483/ """
-    epsg = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs'
-    #epsg = 'PROJCS["WGS 84 / Pseudo-Mercator",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["Degree",0.017453292519943295]],PROJECTION["Mercator"],PARAMETER["central_meridian",0],PARAMETER["scale_factor",1],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["Meter",1]]'
+#    epsg = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs'
+#    epsg = 'PROJCS["WGS 84 / Pseudo-Mercator",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["Degree",0.017453292519943295]],PROJECTION["Mercator"],PARAMETER["central_meridian",0],PARAMETER["scale_factor",1],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["Meter",1]]'
+    """ OGC WKT """
+#    epsg = 'PROJCS["WGS 84 / Pseudo-Mercator",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]],PROJECTION["Mercator_1SP"],PARAMETER["central_meridian",0],PARAMETER["scale_factor",1],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["X",EAST],AXIS["Y",NORTH],EXTENSION["PROJ4","+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs"],AUTHORITY["EPSG","3857"]]'
+#==============================================================================
+#     epsg='PROJCS["WGS 84 / Pseudo-Mercator",GEOGCS["WGS 84",DATUM["WGS_1984",'+
+#         'SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],'+
+#         'AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,'+
+#         'AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,'+
+#         'AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]],'+
+#         'PROJECTION["Mercator_1SP"],PARAMETER["central_meridian",0],'+
+#         'PARAMETER["scale_factor",1],PARAMETER["false_easting",0],'+
+#         'PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],'+
+#         'AXIS["X",EAST],AXIS["Y",NORTH],EXTENSION["PROJ4",'+
+#         '"+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs"],AUTHORITY["EPSG","3857"]]'
+# 
+#==============================================================================
     """ ESRI prj file below """
-    #epsg = 'PROJCS["WGS_1984_Web_Mercator_Auxiliary_Sphere",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Mercator_Auxiliary_Sphere"],PARAMETER["False_Easting",0.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",0.0],PARAMETER["Standard_Parallel_1",0.0],PARAMETER["Auxiliary_Sphere_Type",0.0],UNIT["Meter",1.0]]'
+    epsg = 'PROJCS["WGS_1984_Web_Mercator_Auxiliary_Sphere",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Mercator_Auxiliary_Sphere"],PARAMETER["False_Easting",0.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",0.0],PARAMETER["Standard_Parallel_1",0.0],PARAMETER["Auxiliary_Sphere_Type",0.0],UNIT["Meter",1.0]]'
 else:    
     """ Define WGS84 Geographic Projection string """
     epsg = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
@@ -580,6 +595,13 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
         AallInSorted = AsortedName.find(AallName)
         AsortedInAll =  AallName.find(AsortedName)  
         if AallInSorted + AsortedInAll != -2: # Duplicate names found
+            """ First check that BASINS are the same.  Unfortunately,
+            there are duplicate storm names in the same year, but in different
+            BASINS, esp. for the North Atlantic and Western Pacific in the 
+            late 1970s"""
+            if (allSorted[i].basin != allStorms[j].basin):
+                # The basins are different, so not duplicates. CONTINUE to next j loop
+                continue
             if ( allSorted[i].name.find("NAME") != -1 or 
                  allSorted[i].name.find("KNOWN") != -1 ):
                  """ Unnamed storms are common so check for identical
