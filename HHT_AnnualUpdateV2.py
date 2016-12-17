@@ -40,7 +40,7 @@ import stormReportDownload
 SCRAMBLE = True
 WEBMERC = True
 BREAK180 = True
-TESTING = False
+TESTING = True
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
     reporting groups and give teh dashed black-colored zig zag look to many
@@ -54,8 +54,8 @@ use_HURDAT = True
 dupRange = 5  
 
 """---------------------DEFINE WORKING DIRECTORIES------------------------"""
-workDir = "C:/Data/2015runs/" # On OCM Work Machine
-#workDir = "C:/GIS/Hurricanes/" # On Home Machine
+workDir = "C:/GIS/Hurricanes/HHT/2015_Season/" # On OCM Work Machine
+#workDir = "C:/GIS/Hurricanes/2015_Season/" # On local Work & Home Machine
 #workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 #workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
 #workDir = "T:/for_DaveE/2015Good/" # TEMP drive On OCM Network
@@ -66,14 +66,14 @@ if TESTING:
     h2nepacRaw = dataDir + "Test_hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "Test_Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
 #    ibRaw = dataDir + "Test_Allstorms.ibtracs_csc.Kolia.csv" # IBTrACS CSC v03R08
-    resultsDir = workDir + "Results/Test_nullMissWindSpeed/"  #  Location for final data
+    resultsDir = workDir + "Results/logTest/"  #  Location for final data
 else:
 #    h2AtlRaw = dataDir + "hurdat2-1851-2015-021716.txt"     # HURDAT2 North Atlantic Data 2015
 #    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-    resultsDir = workDir + "Results/NewDups_Weds/"  #  Location for final data (used to be Results/ProdReady_20150720/)
+    resultsDir = workDir + "Results/JanUpdate/"  #  Location for final data (used to be Results/ProdReady_20150720/)
 
 """ Create the needed Results directory if it doesn't exist """
 os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
@@ -261,6 +261,8 @@ class Storm(object):
         self.endTime = None
         self.maxW = float(-1.)
         self.minP = float(9999.)
+        self.startLat = 0.0
+        self.startLon = 0.0
         self.numSegs = 0
         self.maxSaffir = "NR"
         self.enso = ""
@@ -346,6 +348,8 @@ with open(ibRaw, "r") as rawObsFile:
                            vals[7] ) # Nature
      thisStorm.segs.append(observation)
      thisStorm.startTime = observation.time
+     thisStorm.startLon = observation.startLon
+     thisStorm.startLat = observation.startLat
      thisStorm.name = thisStorm.name + " " \
          + thisStorm.startTime.strftime('%Y') 
      # enter end time in case this is only observation.
@@ -409,6 +413,8 @@ with open(ibRaw, "r") as rawObsFile:
                                        vals[7] ) # Nature
                  thisStorm.segs.append(observation)
                  thisStorm.startTime = observation.time
+                 thisStorm.startLon = observation.startLon
+                 thisStorm.startLat = observation.startLat
                  # enter end time in case this is only observation.
                  thisStorm.name = thisStorm.name + " " \
                      + thisStorm.startTime.strftime('%Y') 
@@ -519,6 +525,8 @@ for i, file in enumerate(hFiles):
 #                     thisStorm.numSegs, "observations and is index ", numStorms)            
 #==============================================================================
             thisStorm.startTime = thisStorm.segs[0].time
+            thisStorm.startLon = thisStorm.segs[0].startLon
+            thisStorm.startLat = thisStorm.segs[0].startLat
             #thisStorm.name = thisStorm.name +" "+ thisStorm.startTime[:4]
             thisStorm.name = thisStorm.name + " " \
                  + thisStorm.startTime.strftime('%Y') 
@@ -615,15 +623,21 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
             break
     
     if isDuplicate:
-        logFile.write('\n' + str(nDups) + ' sets of duplicate storms found! \n' +
-               'Source\tUID\t\tName\tStart Date \n' +
+        logFile.write('Duplicate set ' + str(nDups) + ' found! \n' +
+               'Source\tUID\t\tName\t\tStart Date\t\tBasin\tLon\tLat\n' +
                str(allSorted[i].source) +"\t"+ str(allSorted[i].uid) +"\t"+
                allSorted[i].name +"\t"+
-               str(allSorted[i].startTime) + ' and \n' +
+               str(allSorted[i].startTime) +"\t"+ 
+               str(allSorted[i].basin) +"\t"+
+               str(allSorted[i].startLon) +"\t"+
+               str(allSorted[i].startLat) + ' and \n' +
                str(allStorms[dupIndex].source) +"\t"+ 
                str(allStorms[dupIndex].uid) +"\t"+
                allStorms[dupIndex].name +"\t"+
-               str(allStorms[dupIndex].startTime))
+               str(allStorms[dupIndex].startTime) +"\t"+ 
+               str(allStorms[dupIndex].basin) +"\t"+ 
+               str(allStorms[dupIndex].startLon) +"\t"+ 
+               str(allStorms[dupIndex].startLat) + "\n")
         if use_HURDAT:
              if allSorted[i].source > 0: #This is a HURDAT record so replace old one
                 """ NOTE BENE: If choosing HURDAT over IBTrACS, then replace 
@@ -653,22 +667,6 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
 
     else: # not a duplicate, so copy it to allStorms
         allStorms.append(allSorted[i])
- 
-#==============================================================================
-# print ("\nIBTrACS: {0}, HURDAT2_ATL: {1}, HURDAT2_NEPAC: {2}".format(
-#         ibNum, hstormNum[0], hstormNum[1]),
-#         "\n   QA: TOTAL STORMS INGESTED = {0}\n".format(
-#         ibNum+hstormNum[0]+hstormNum[1]), 
-#         "Single Obs storms ommitted: {0}, Multi-Obs storms kept: {1}".format(
-#         numSinglePoint,len(allSorted)),
-#         "\n   QA: STORMS LENGTH CHECKED = {0} (Equals total ingested.)\n".format(
-#         len(allSorted)+numSinglePoint),
-#         "Duplicated storms removed: {0}, Unique storms = {1}".format(
-#         nDups,len(allStorms)), 
-#         "\n   QA: TOTAL STORMS PROCESSED for DUPLICATES = {0}\n".format(
-#         nDups+len(allStorms)),
-#         "    (This should equal number of Multi-obs storms.)\n")
-#==============================================================================
 
 """ -------------------- All storms are now unique -------------------- """
 
@@ -1184,7 +1182,7 @@ fNamesJS.close()
 fYears = open(yearsJSON,'w')
 json.dump(uniqueYears,fYears)
 fYears.close()
-logFile.close()
+#logFile.close()
 
 print("\n    All IBTrACS: {0}, Skipped NA and EP: {1}, Used: {2}".format(
         ibNum, ibSkipNum, ibNum-ibSkipNum),
@@ -1210,3 +1208,31 @@ print("\n\nIf the above QA numbers are consistent, there will be ",
       numGoodObs,'\nstorms in the "good" shapefiles,\n',
       "and",numAllMissing,'storms in the "missing" shapefiles. \n',
       'All should be ingested into the database for use on the HHT site.')
+
+logFile.write("\n    All IBTrACS: "+str(ibNum) +
+              " Skipped NA and EP: " + str(ibSkipNum) +
+              ", Used: " + str(ibNum-ibSkipNum) + 
+              "\n    HURDAT2_ATL: " + str(hstormNum[0]) + 
+              " HURDAT2_NEPAC: " + str( hstormNum[1]) +
+              "\nQA: TOTAL STORMS INGESTED (sum IBTracs USED and HURDAT2) = " +
+              str(ibNum-ibSkipNum+hstormNum[0]+hstormNum[1]))
+logFile.write("\n    Single Obs storms removed: " + str(numSinglePoint) +
+              " Multi-Obs storms kept: " + str(len(allSorted)) +
+              "\nQA: SUM OF STORMS LENGTH CHECKED = " + str(len(allSorted)+numSinglePoint) + 
+              " (Should equal total ingested.)")
+logFile.write("\n    Duplicate storms removed: "+str(nDups) +
+              ", Unique storms = " + str(len(allStorms)) + 
+              "\nQA: STORMS PROCESSED for DUPLICATES = " + 
+              str(nDups+len(allStorms)) + 
+              "  (This should equal number of Multi-obs storms.)")
+logFile.write("\n    Storms with no wind or pressure: " + str(numAllMissing) +
+              ", Good storm tracks: " + str(numGoodObs) + 
+              "\nQA: TOTAL STORMS CHECKED FOR WIND AND PRESSURE VALUES = " +
+              str(numAllMissing+numGoodObs) +
+              ", (This should equal number of UNIQUE storms.)\n")
+logFile.write("\nIf the above QA numbers are consistent, there will be " +
+              str(numGoodObs) + ' storms in the "good" shapefiles,\n' +
+      "and "+ str(numAllMissing) + ' storms in the "missing" shapefiles. \n' +
+      'All should be ingested into the database for use on the HHT site.')
+
+logFile.close()
