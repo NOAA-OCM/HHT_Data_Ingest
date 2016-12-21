@@ -40,7 +40,7 @@ import stormReportDownload
 SCRAMBLE = True
 WEBMERC = True
 BREAK180 = True
-TESTING = True
+TESTING = False
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
     reporting groups and give teh dashed black-colored zig zag look to many
@@ -70,10 +70,11 @@ if TESTING:
 else:
 #    h2AtlRaw = dataDir + "hurdat2-1851-2015-021716.txt"     # HURDAT2 North Atlantic Data 2015
 #    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
-    h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
+#    h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
+    h2AtlRaw = dataDir + "hurdat2-1851-2015-070616.txt"     # HURDAT2 North Atlantic Data 2015
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
-    ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-    resultsDir = workDir + "Results/JanUpdate/"  #  Location for final data (used to be Results/ProdReady_20150720/)
+    ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r09.csv" #Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
+    resultsDir = workDir + "Results/JanUpd_nodupsinsamesource/"  #  Location for final data (used to be Results/ProdReady_20150720/)
 
 """ Create the needed Results directory if it doesn't exist """
 os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
@@ -490,13 +491,6 @@ for i, file in enumerate(hFiles):
                 otime = vals[0][0:4] +"-"+vals[0][4:6]+"-"+vals[0][6:] + " "
                 otime += vals[1][1:3] + ":" + vals[1][3:] + ":00"
 
-#==============================================================================
-#                 lat = (float(vals[4][:4]) if vals[4][4] == "N" 
-#                          else -1. * float(vals[4][:4]))
-#                 try:
-#                     lon = (float(vals[5][:5]) if vals[5][5] == "E" 
-#                         else -1. * float(vals[5][:5]))
-#==============================================================================
                 if (vals[4][len(vals[4])-1] == "N"):
                     lat = float(vals[4][:len(vals[4])-1]) 
                 else:
@@ -504,8 +498,12 @@ for i, file in enumerate(hFiles):
                 try:
                     if vals[5][len(vals[5])-1] == "E":
                         lon = float(vals[5][:len(vals[5])-1])
+                        if(lon > 180.0): # Correct for mis-entered Lon values
+                            lon = lon - 360.
                     else:
                         lon = -1. * float(vals[5][:len(vals[5])-1])
+                        if(lon < -180.0): # Correct for mis-entered Lon values
+                            lon = 360 + lon
                 except:
                     print("Bad lon on ob,vals storm",
                           ob,vals,thisStorm.name)
@@ -582,16 +580,20 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
             **** ALERT *** The above assumption is incorrect.  IBTrACS has 
             many self-duplicates.  We now check with those and remove duplicates
             unless they are in different basins. 5/31/2016 DLE """
+        if(allSorted[i].source == allStorms[j].source):
+            continue # These are from different basins so are not duplicates
             
         """ There can be duplicates in IBTrACS (and also Hurdat), so need to 
         check all storms no matter the source.  However, storms from different
         basins should not be duplicates, so check for that, since those can 
         meet the other duplicate requirements, e.g., LIN and CAROLINE."""
-#==============================================================================
-#         if(allSorted[i].basin != allStorms[j].basin):
-#             continue # These are from different basins so are not duplicates
-#         
-#==============================================================================
+        
+        """ Now I'm not so sure about the duplicates w/in data sets.  
+            Many identified are not duplicates, they start too far apart.
+            DLE 12/21/2016   """
+        if(allSorted[i].basin != allStorms[j].basin):
+            continue # These are from different basins so are not duplicates
+        
         """ Check names, but omit the year from the search string.
             We omit the year to be able to search for the names as substrings
             within each other.  The name is just appended on and will confuse
