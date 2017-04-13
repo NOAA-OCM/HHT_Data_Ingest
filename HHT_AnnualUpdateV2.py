@@ -31,10 +31,21 @@ import os
 import math
 import random
 import json
-import shapefile
 import datetime as dt
-import ensoDownload
-import stormReportDownload
+
+""" If shapefile package is not available, add it using conda.
+    Try this first to see if the Anaconda folks have added it to their library:
+        conda install pyshp
+    If that doesn't work, get it from another archive, such as conda-forge:
+        conda install --channel https://conda.anaconda.org/conda-forge pyshp
+    """
+import shapefile
+
+"""  These next two packages are custom packages for this progam.  They
+    should be in the same directory as HHT_Annualupdate
+    """
+import ensoDownload # Local python module
+import stormReportDownload # Local python module
 
 """ Declarations and Parameters """
 SCRAMBLE = True
@@ -54,7 +65,7 @@ use_HURDAT = True
 dupRange = 5  
 
 """---------------------DEFINE WORKING DIRECTORIES------------------------"""
-workDir = "C:/GIS/Hurricanes/HHT/2015_Season/" # On OCM Work Machine
+workDir = "C:/GIS/Hurricanes/HHT/2016_Season/" # On OCM Work Machine
 #workDir = "C:/GIS/Hurricanes/2015_Season/" # On local Work & Home Machine
 #workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 #workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
@@ -71,10 +82,12 @@ else:
 #    h2AtlRaw = dataDir + "hurdat2-1851-2015-021716.txt"     # HURDAT2 North Atlantic Data 2015
 #    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
 #    h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
-    h2AtlRaw = dataDir + "hurdat2-1851-2015-070616.txt"     # HURDAT2 North Atlantic Data 2015
-    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
+#    h2AtlRaw = dataDir + "hurdat2-1851-2015-070616.txt"     # HURDAT2 North Atlantic Data 2015
+#    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
+    h2AtlRaw = dataDir + "hurdat2-1851-2016-041117.txt"     # HURDAT2 North Atlantic Data 2015
+    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2016-041317.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r09.csv" #Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-    resultsDir = workDir + "Results/JanUpd_nodupsinsamesource/"  #  Location for final data (used to be Results/ProdReady_20150720/)
+    resultsDir = workDir + "Results/Production04132017/"  #  Location for final data (used to be Results/ProdReady_20150720/)
 
 """ Create the needed Results directory if it doesn't exist """
 os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
@@ -780,7 +793,8 @@ for i, storm in enumerate(allStorms):
 # print(sorted(uniqueNatures))
 #==============================================================================
 
-stormFields = [['STORMID','C','56'],
+stormFields = [['STRMTRKOID','N','10'],
+               ['STORMID','C','56'],
                ['MxWind1min','N','19'],
                ['Basin','C','10'],
                ['Disp_Name','C','81'],
@@ -812,7 +826,8 @@ for attribute in stormFields:
      
 
 """ For SEGMENTS : """
-segmentFields = [['STORMID','C','58'],
+segmentFields = [['SEGMNTOID','N','10'],
+                 ['STORMID','C','58'],
                  ['MSW_1min','N','9'],
                  ['BeginObHr','C','9'],
                  ['BeginLat','C','10'],
@@ -850,8 +865,11 @@ missingSegCoords = []
 missingSegParams = []
 missingSegNum = 0
 missingSegIndx= []
+stormOID = 0 # Counter to make unique ID number for each storm
+segmentOID = 0 # Counter to make unique ID number for each segment
        
 for i, storm in enumerate(allStorms):
+    stormOID = stormOID + 1
     basin = storm.basin            
     trackCoords = [] # Create list for stormTracks shapefile
     """ Find out if this hurricane has any valid pressure or wind speed obs """
@@ -860,6 +878,7 @@ for i, storm in enumerate(allStorms):
     else:
         goodStorm = True
     for thisSegment in storm.segs:
+        segmentOID = segmentOID + 1
 
         """ Check for segments spanning the 180 degree line. If they do
             and BREAK180 is true, create multi-part segments. """
@@ -974,7 +993,8 @@ for i, storm in enumerate(allStorms):
         """ Add this segment's data to the appropriate segments shapefile """
         if goodStorm:
             goodSegCoords.append(segCoords)
-            goodSegParams.append([storm.uid,           # Storm ID
+            goodSegParams.append([segmentOID,     # Storm Object ID,
+                           storm.uid,           # Storm ID
                            thisSegment.wsp,     # Max. Sustained Wind
                            begObsHour,          # Begin Observation Hour Why?
                            thisSegment.startLat,# Begin Lat
@@ -1000,8 +1020,9 @@ for i, storm in enumerate(allStorms):
                     
         else:
             missingSegCoords.append(segCoords)
-            missingSegParams.append([storm.uid,           # Storm ID
-                            thisSegment.wsp,     # Max. Sustained Wind
+            missingSegParams.append([segmentOID,     # Storm Object ID,
+                           storm.uid,           # Storm ID
+                           thisSegment.wsp,     # Max. Sustained Wind
                            begObsHour,          # Begin Observation Hour Why?
                            thisSegment.startLat,# Begin Lat
                            thisSegment.startLon,# Begin Long.
@@ -1073,7 +1094,8 @@ for i, storm in enumerate(allStorms):
     if goodStorm:
         numGoodObs += 1
         goodTracks.poly(shapeType=3, parts = trackCoords ) # Add the shape
-        goodTracks.record(storm.uid,       # StormID
+        goodTracks.record(stormOID,     # Storm Object ID,
+                       storm.uid,       # StormID
                        storm.maxW,      # Max Sustained WInd, 1 min ave period
                        basin,           # Basin
                        storm.name,      # Display Storm Name
@@ -1094,7 +1116,8 @@ for i, storm in enumerate(allStorms):
     else:
         numAllMissing += 1
         missingTracks.poly(shapeType=3, parts = trackCoords ) # Add the shape
-        missingTracks.record(storm.uid,       # StormID
+        missingTracks.record(stormOID,     # Storm Object ID,
+                       storm.uid,       # StormID
                        storm.maxW,      # Max Sustained WInd, 1 min ave period
                        basin,           # Basin
                        storm.name,      # Display Storm Name
