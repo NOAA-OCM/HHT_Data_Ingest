@@ -58,6 +58,7 @@ def rptDict():
 #==============================================================================
 #     for j in range(len(strName)):    
 #         print(strName[j], basin[j])
+#     print(min(syear),max(syear))
 #==============================================================================
         
 """ This is the test code to simply run the rptDict function by itself 

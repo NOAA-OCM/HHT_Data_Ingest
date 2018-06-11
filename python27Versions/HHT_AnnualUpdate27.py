@@ -25,8 +25,6 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
              by name.  
          2016-04-20: Matt Pendleton editing for test runs for 2015 data
          2016-05-16: test runs with 2015 ibtracs and fixed Hurdat2
-         2017-06-22: Shapefile attribute name changes for new database
-         2018-06-11: Updated for 2017 data.  Should be the last version of V03.
 """
 
 import os
@@ -67,7 +65,7 @@ use_HURDAT = True
 dupRange = 5  
 
 """---------------------DEFINE WORKING DIRECTORIES------------------------"""
-workDir = "C:/GIS/Hurricanes/HHT/2017_Season/" # On OCM Work Machine
+workDir = "C:/GIS/Hurricanes/HHT/2015_Season/" # On OCM Work Machine
 #workDir = "C:/GIS/Hurricanes/2015_Season/" # On local Work & Home Machine
 #workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 #workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
@@ -84,13 +82,10 @@ else:
 #    h2AtlRaw = dataDir + "hurdat2-1851-2015-021716.txt"     # HURDAT2 North Atlantic Data 2015
 #    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
 #    h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
-#    h2AtlRaw = dataDir + "hurdat2-1851-2015-070616.txt"     # HURDAT2 North Atlantic Data 2015
-#    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
-    h2AtlRaw = dataDir + "hurdat2-1851-2017-050118.txt"     # HURDAT2 North Atlantic Data 2015
-    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2017-050418.txt" # HURDAT2 NE North Pacific Data
-    ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r10.csv" #Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-#    ibRaw = ""
-    resultsDir = workDir + "Results/Update2017v03r10_2018-06-11/"  #  Location for final data (used to be Results/ProdReady_20150720/)
+    h2AtlRaw = dataDir + "hurdat2-1851-2015-070616.txt"     # HURDAT2 North Atlantic Data 2015
+    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
+    ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r09.csv" #Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
+    resultsDir = workDir + "Results/JanUpd_nodupsinsamesource/"  #  Location for final data (used to be Results/ProdReady_20150720/)
 
 """ Create the needed Results directory if it doesn't exist """
 os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
@@ -103,8 +98,8 @@ logFile = open(logFileName,'w')
     (ONLY USED FOR TESTING IBTrACS SPECIFIC CODE) """
 hFiles = [h2AtlRaw, h2nepacRaw]
 hBasin = ["NA","EP"]
-#hFiles = [h2AtlRaw]
-#hBasin = ["NA"]
+#hFiles = [h2nepacRaw]
+#hBasin = ["EP"]
 #hFiles = []
 
 """ Define JSON filenames """
@@ -340,128 +335,125 @@ numGoodObs = 0
     We know the IBTrACS data starts with 3 header rows, then the 4th row
     is our first legitimate data record.  
     Initialize the first thisStorm object from that"""
-ibFiles = [ibRaw]
-#ibFiles = []
+    
 ibNum = 0 # Initialize IBTrACS storm counter, 
           # it will increment when storm end is found
 ibSkipNum = 0  # Number of NA and EP storms skipped to prevent HURDAT2 duplicates
-for i, file in enumerate(ibFiles):
-    print (i, file)
-    print ('IBTrACS file: ', file)    
-    with open(ibRaw, "r") as rawObsFile:
-         head1 = rawObsFile.readline()
-         head2 = rawObsFile.readline()
-         head3 = rawObsFile.readline()
-    #     print(head1, head2, head3)
-         """ Read first IBTrACS Record """
-         lineVals = rawObsFile.readline() # First Storm record in IBTrACS
-         vals = lineVals.split(",")
-         """ Create first storm """
-         thisStorm = Storm(vals[0],          # Unique IBTrACS ID
-                           vals[5].strip())  # Name, spaces removed
-    #     observation = Segment(vals[6],  # ISO 8601 Time 
-         observation = Segment(vals[6],  # ISO 8601 Time 
-                               vals[8],  # Lat
-                               vals[9],  # Lon
-                               vals[10], # Wind speed
-                               vals[11], # Pressure
-                               vals[7] ) # Nature
-         thisStorm.segs.append(observation)
-         thisStorm.startTime = observation.time
-         thisStorm.startLon = observation.startLon
-         thisStorm.startLat = observation.startLat
-         thisStorm.name = thisStorm.name + " " \
-             + thisStorm.startTime.strftime('%Y') 
-         # enter end time in case this is only observation.
-         thisStorm.endTime = observation.time 
-         print(thisStorm.startTime)
-         nseg = 1
-         thisStorm.source = 0            # Flag data source as IBTrACS
-         thisStorm.basin = vals[3].strip()
-         """ First storm and observation entered, begin looping """
-         while True: # With this and the below break, read to EOF
-             lineVals = rawObsFile.readline()
-             if not lineVals: # Finds EOF
-                 break # Break on EOF
-             else: # Data read: Parse it and test to see if it is a new storm
-                 vals = lineVals.split(",")
-                 if vals[0] == thisStorm.uid :  # Same storm so add the record
-                     observation = Segment(vals[6],  # ISO 8601 Time 
-                                           vals[8],  # Lat
-                                           vals[9],  # Lon
-                                           vals[10], # Wind speed
-                                           vals[11], # Pressure
-                                           vals[7] ) # Nature
-                     ibHour = observation.time.hour*100+observation.time.minute
-                     if NO391521 and (ibHour == 300 or ibHour == 900 or
-                                      ibHour == 1500 or ibHour == 2100):
-                        pass #Skip writing this observation
-                     else:
-                         thisStorm.endTime = observation.time #update end time
-                         thisStorm.segs.append(observation)
-                         nseg += 1
-                 else: #Found a new storm so...
-                     thisStorm.numSegs = len(thisStorm.segs)
-    #                 allStorms.append(thisStorm) # Add old storm to allStorms
-                     """ Only keep the storm if there is more than ONE observation: """
-                     if(thisStorm.numSegs > 1):
-                         # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
-                         if(thisStorm.basin[0:2] != "NA" and thisStorm.basin[0:2] != "EP"):
-                             allStorms.append(thisStorm) # Add old storm to allStorms
-    #                         print("IBTrACS basin",thisStorm.basin)
-                         else:
-                             ibSkipNum += 1
-    #                         print("Duplicate in basin",thisStorm.basin)
-                     else:
-                         numSinglePoint += 1
-                     ibNum += 1 # Increment counter for IBTrACS storms
-    #==============================================================================
-    #                  print("IBTrACS storm # ",ibNum," named ",thisStorm.name,
-    #                        " has ", thisStorm.numSegs," observations \n    which ",
-    #                        "should be ", nseg)
-    #==============================================================================
-                     
-                     """ Create a new storm record for the newly read storm """
-                     thisStorm = Storm(vals[0],          # Unique IBTrACS ID
-                                       vals[5].strip())  # Name, spaces removed
-                     """ Add the first segment information to the storm """
-                     observation = Segment(vals[6],  # ISO 8601 Time 
-                                           vals[8],  # Lat
-                                           vals[9],  # Lon
-                                           vals[10], # Wind speed
-                                           vals[11], # Pressure
-                                           vals[7] ) # Nature
+print ('IBTrACS file: ', ibRaw)    
+with open(ibRaw, "r") as rawObsFile:
+     head1 = rawObsFile.readline()
+     head2 = rawObsFile.readline()
+     head3 = rawObsFile.readline()
+#     print(head1, head2, head3)
+     """ Read first IBTrACS Record """
+     lineVals = rawObsFile.readline() # First Storm record in IBTrACS
+     vals = lineVals.split(",")
+     """ Create first storm """
+     thisStorm = Storm(vals[0],          # Unique IBTrACS ID
+                       vals[5].strip())  # Name, spaces removed
+#     observation = Segment(vals[6],  # ISO 8601 Time 
+     observation = Segment(vals[6],  # ISO 8601 Time 
+                           vals[8],  # Lat
+                           vals[9],  # Lon
+                           vals[10], # Wind speed
+                           vals[11], # Pressure
+                           vals[7] ) # Nature
+     thisStorm.segs.append(observation)
+     thisStorm.startTime = observation.time
+     thisStorm.startLon = observation.startLon
+     thisStorm.startLat = observation.startLat
+     thisStorm.name = thisStorm.name + " " \
+         + thisStorm.startTime.strftime('%Y') 
+     # enter end time in case this is only observation.
+     thisStorm.endTime = observation.time 
+     print(thisStorm.startTime)
+     nseg = 1
+     thisStorm.source = 0            # Flag data source as IBTrACS
+     thisStorm.basin = vals[3].strip()
+     """ First storm and observation entered, begin looping """
+     while True: # With this and the below break, read to EOF
+         lineVals = rawObsFile.readline()
+         if not lineVals: # Finds EOF
+             break # Break on EOF
+         else: # Data read: Parse it and test to see if it is a new storm
+             vals = lineVals.split(",")
+             if vals[0] == thisStorm.uid :  # Same storm so add the record
+                 observation = Segment(vals[6],  # ISO 8601 Time 
+                                       vals[8],  # Lat
+                                       vals[9],  # Lon
+                                       vals[10], # Wind speed
+                                       vals[11], # Pressure
+                                       vals[7] ) # Nature
+                 ibHour = observation.time.hour*100+observation.time.minute
+                 if NO391521 and (ibHour == 300 or ibHour == 900 or
+                                  ibHour == 1500 or ibHour == 2100):
+                    pass #Skip writing this observation
+                 else:
+                     thisStorm.endTime = observation.time #update end time
                      thisStorm.segs.append(observation)
-                     thisStorm.startTime = observation.time
-                     thisStorm.startLon = observation.startLon
-                     thisStorm.startLat = observation.startLat
-                     # enter end time in case this is only observation.
-                     thisStorm.name = thisStorm.name + " " \
-                         + thisStorm.startTime.strftime('%Y') 
-                     thisStorm.endTime = observation.time 
-                     nseg = 1 # New storm ready for next record
-                     thisStorm.source = 0 # Flag data source as IBTrACS
-                     thisStorm.basin = vals[3].strip()
-         """ EOF found on IBTrACS: Write last data and close out """           
-         thisStorm.numSegs = len(thisStorm.segs)
-         """ Only keep the storm if there is more than ONE observation: """
-         if(thisStorm.numSegs > 1):
-             # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
-             if(thisStorm.basin[0:2] != "NA" and thisStorm.basin[0:2] != "EP"):
-                 allStorms.append(thisStorm) # Add old storm to allStorms
-    #             print("IBTrACS basin",thisStorm.basin)
-             else:
-                 ibSkipNum += 1
-    #             print("Duplicate in basin",thisStorm.basin)
+                     nseg += 1
+             else: #Found a new storm so...
+                 thisStorm.numSegs = len(thisStorm.segs)
+#                 allStorms.append(thisStorm) # Add old storm to allStorms
+                 """ Only keep the storm if there is more than ONE observation: """
+                 if(thisStorm.numSegs > 1):
+                     # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
+                     if(thisStorm.basin[0:2] != "NA" and thisStorm.basin[0:2] != "EP"):
+                         allStorms.append(thisStorm) # Add old storm to allStorms
+#                         print("IBTrACS basin",thisStorm.basin)
+                     else:
+                         ibSkipNum += 1
+#                         print("Duplicate in basin",thisStorm.basin)
+                 else:
+                     numSinglePoint += 1
+                 ibNum += 1 # Increment counter for IBTrACS storms
+#==============================================================================
+#                  print("IBTrACS storm # ",ibNum," named ",thisStorm.name,
+#                        " has ", thisStorm.numSegs," observations \n    which ",
+#                        "should be ", nseg)
+#==============================================================================
+                 
+                 """ Create a new storm record for the newly read storm """
+                 thisStorm = Storm(vals[0],          # Unique IBTrACS ID
+                                   vals[5].strip())  # Name, spaces removed
+                 """ Add the first segment information to the storm """
+                 observation = Segment(vals[6],  # ISO 8601 Time 
+                                       vals[8],  # Lat
+                                       vals[9],  # Lon
+                                       vals[10], # Wind speed
+                                       vals[11], # Pressure
+                                       vals[7] ) # Nature
+                 thisStorm.segs.append(observation)
+                 thisStorm.startTime = observation.time
+                 thisStorm.startLon = observation.startLon
+                 thisStorm.startLat = observation.startLat
+                 # enter end time in case this is only observation.
+                 thisStorm.name = thisStorm.name + " " \
+                     + thisStorm.startTime.strftime('%Y') 
+                 thisStorm.endTime = observation.time 
+                 nseg = 1 # New storm ready for next record
+                 thisStorm.source = 0 # Flag data source as IBTrACS
+                 thisStorm.basin = vals[3].strip()
+     """ EOF found on IBTrACS: Write last data and close out """           
+     thisStorm.numSegs = len(thisStorm.segs)
+     """ Only keep the storm if there is more than ONE observation: """
+     if(thisStorm.numSegs > 1):
+         # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
+         if(thisStorm.basin[0:2] != "NA" and thisStorm.basin[0:2] != "EP"):
+             allStorms.append(thisStorm) # Add old storm to allStorms
+#             print("IBTrACS basin",thisStorm.basin)
          else:
-             numSinglePoint += 1
-             
-         ibNum += 1 # Increment counter for IBTrACS storms
-    #==============================================================================
-    #      print("Last IBTrACS storm # ",ibNum," named ",thisStorm.name,
-    #            " has ", thisStorm.numSegs," observations \n    which ",
-    #            "should be ", nseg)
-    #==============================================================================
+             ibSkipNum += 1
+#             print("Duplicate in basin",thisStorm.basin)
+     else:
+         numSinglePoint += 1
+         
+     ibNum += 1 # Increment counter for IBTrACS storms
+#==============================================================================
+#      print("Last IBTrACS storm # ",ibNum," named ",thisStorm.name,
+#            " has ", thisStorm.numSegs," observations \n    which ",
+#            "should be ", nseg)
+#==============================================================================
 
 """ End of IBTrACS Ingest """
 
@@ -799,20 +791,19 @@ for i, storm in enumerate(allStorms):
 # print(sorted(uniqueNatures))
 #==============================================================================
 
-stormFields = [['STRMTRKOID','N','10'],
-               ['STORMID','C','56'],
-               ['MaxWindSpd','N','19'],
+stormFields = [['STORMID','C','56'],
+               ['MxWind1min','N','19'],
                ['Basin','C','10'],
                ['Disp_Name','C','81'],
-               ['DateRange','C','140'],
-               ['Begin_Date','D','8'],
-               ['End_Date','D','8'],
-               ['SS_Scale','C','10'],
-               ['FiltYears','C','10'],
-               ['FiltMonths','C','10'],
-               ['FiltBasins','C','10'],
-               ['FiltMaxSS','C','10'],
-               ['Min_Press','N','10'],
+               ['DDateRange','C','140'],
+               ['BegObDate','D','8'],
+               ['EndObDate','D','8'],
+               ['D_SaffirS','C','10'],
+               ['FP_Years','C','10'],
+               ['FP_Months','C','10'],
+               ['FP_CR','C','10'],
+               ['FP_MSS','C','10'],
+               ['FP_MP','N','10'],
                ['StrmRptURL','C','254'],
                ['In10sOrder','N','10'], # End of Previous Attributes
                ['NumObs','C','10'],
@@ -832,9 +823,8 @@ for attribute in stormFields:
      
 
 """ For SEGMENTS : """
-segmentFields = [['SEGMNTOID','N','10'],
-                 ['STORMID','C','58'],
-                 ['MaxWindSpd','N','9'],
+segmentFields = [['STORMID','C','58'],
+                 ['MSW_1min','N','9'],
                  ['BeginObHr','C','9'],
                  ['BeginLat','C','10'],
                  ['BeginLon','C','10'],
@@ -871,11 +861,8 @@ missingSegCoords = []
 missingSegParams = []
 missingSegNum = 0
 missingSegIndx= []
-stormOID = 0 # Counter to make unique ID number for each storm
-segmentOID = 0 # Counter to make unique ID number for each segment
        
 for i, storm in enumerate(allStorms):
-    stormOID = stormOID + 1
     basin = storm.basin            
     trackCoords = [] # Create list for stormTracks shapefile
     """ Find out if this hurricane has any valid pressure or wind speed obs """
@@ -884,7 +871,6 @@ for i, storm in enumerate(allStorms):
     else:
         goodStorm = True
     for thisSegment in storm.segs:
-        segmentOID = segmentOID + 1
 
         """ Check for segments spanning the 180 degree line. If they do
             and BREAK180 is true, create multi-part segments. """
@@ -936,7 +922,7 @@ for i, storm in enumerate(allStorms):
                          [[meLon,mLat],[eLon, eLat]]]
 #==============================================================================
 #             """ DEBUG: Print out info for Georges, which is one of many storms 
-#                 generating shapefiles with bad geometry due to segments too short. """
+#                 generating shapefiles with bad geometry due to segments to short. """
 #             if(storm.name == 'GEORGES 1998'):
 #                 print(sLat,sLon, eLat, eLon,'Total Length = ', 
 #                       math.sqrt( (sLon - eLon)**2 + (sLat-eLat)**2)) 
@@ -999,14 +985,14 @@ for i, storm in enumerate(allStorms):
         """ Add this segment's data to the appropriate segments shapefile """
         if goodStorm:
             goodSegCoords.append(segCoords)
-            goodSegParams.append([segmentOID,     # Storm Object ID,
-                           storm.uid,           # Storm ID
+            goodSegParams.append([storm.uid,           # Storm ID
                            thisSegment.wsp,     # Max. Sustained Wind
                            begObsHour,          # Begin Observation Hour Why?
                            thisSegment.startLat,# Begin Lat
                            thisSegment.startLon,# Begin Long.
                            thisSegment.pres,    # Min Pressure
                            basin,               # Basin
+#                           thisStorm.basin,               # Basin
                            thisSegment.saffir,  # Saffir Simpson Scale
                            dateTime,            # Date and Time
                            thisSegment.wsp,     # Display Max. Sustained Wind
@@ -1025,9 +1011,8 @@ for i, storm in enumerate(allStorms):
                     
         else:
             missingSegCoords.append(segCoords)
-            missingSegParams.append([segmentOID,     # Storm Object ID,
-                           storm.uid,           # Storm ID
-                           thisSegment.wsp,     # Max. Sustained Wind
+            missingSegParams.append([storm.uid,           # Storm ID
+                            thisSegment.wsp,     # Max. Sustained Wind
                            begObsHour,          # Begin Observation Hour Why?
                            thisSegment.startLat,# Begin Lat
                            thisSegment.startLon,# Begin Long.
@@ -1099,8 +1084,7 @@ for i, storm in enumerate(allStorms):
     if goodStorm:
         numGoodObs += 1
         goodTracks.poly(shapeType=3, parts = trackCoords ) # Add the shape
-        goodTracks.record(stormOID,     # Storm Object ID,
-                       storm.uid,       # StormID
+        goodTracks.record(storm.uid,       # StormID
                        storm.maxW,      # Max Sustained WInd, 1 min ave period
                        basin,           # Basin
                        storm.name,      # Display Storm Name
@@ -1121,8 +1105,7 @@ for i, storm in enumerate(allStorms):
     else:
         numAllMissing += 1
         missingTracks.poly(shapeType=3, parts = trackCoords ) # Add the shape
-        missingTracks.record(stormOID,     # Storm Object ID,
-                       storm.uid,       # StormID
+        missingTracks.record(storm.uid,       # StormID
                        storm.maxW,      # Max Sustained WInd, 1 min ave period
                        basin,           # Basin
                        storm.name,      # Display Storm Name
