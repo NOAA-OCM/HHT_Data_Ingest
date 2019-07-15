@@ -8,25 +8,27 @@ Python 3.4
 Created 2014-12-11 by David L Eslinger (DLE)
     NOAA Office for Coastal Management
     Charleston, SC USA
-    
+
 Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
          2015-04-16: Adding code to find Storm Report URLs from:
              http://www.nhc.noaa.gov/TCR_StormReportsIndex.xml (DLE)
-         2015-05-28: Writing 4 shapefiles: goodTracks, goodSegemtns, 
+         2015-05-28: Writing 4 shapefiles: goodTracks, goodSegemtns,
              missingTracks and missingSegments.  The missing ones will be those
-             with no valid pressure or wind speed records.  Most of those are 
+             with no valid pressure or wind speed records.  Most of those are
              from the older storms.
-         2015-06-02: Randomizing segment order to make tool behave as 
+         2015-06-02: Randomizing segment order to make tool behave as
              previously with SQL process with segements in random order.
-         2015-07-20: Renamed for operational use.  Now also creates two needed 
-             index files: hurricaneYears.json and stormnames.js. These are 
-             used by the Historical Hurricane Tracks site 
-             (http://coast.noaa.gov/hurricanes) for searching by year and/or 
-             by name.  
+         2015-07-20: Renamed for operational use.  Now also creates two needed
+             index files: hurricaneYears.json and stormnames.js. These are
+             used by the Historical Hurricane Tracks site
+             (http://coast.noaa.gov/hurricanes) for searching by year and/or
+             by name.
          2016-04-20: Matt Pendleton editing for test runs for 2015 data
          2016-05-16: test runs with 2015 ibtracs and fixed Hurdat2
          2017-06-22: Shapefile attribute name changes for new database
          2018-06-11: Updated for 2017 data.  Should be the last version of V03.
+         2018-07-15: Updates for 2018 storms, need to read in IBTrACS V04.
+
 """
 
 import os
@@ -56,25 +58,26 @@ BREAK180 = True
 TESTING = False
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
-    reporting groups and give teh dashed black-colored zig zag look to many
-    tracks in the Indian Ocean. """    
-NO391521 = True  
+    reporting groups and give the dashed black-colored zig zag look to many
+    tracks in the Indian Ocean. """
+NO391521 = True
 
 """ Choose to use either HURDAT2 data as the 'base' data layer (a new
-    behaviour) or to use IBTrACS as the 'base' depending on the 
+    behaviour) or to use IBTrACS as the 'base' depending on the
     use_HURDAT variable: """
 use_HURDAT = True
-dupRange = 5  
+dupRange = 5
 
 """---------------------DEFINE WORKING DIRECTORIES------------------------"""
-workDir = "C:/GIS/Hurricanes/HHT/2017_Season/" # On OCM Work Machine
+workDir = "C:/GIS/Hurricanes/HHT/2018_Season/" # On OCM Work Machine
+#workDir = "C:/GIS/Hurricanes/HHT/2017_Season/" # On OCM Work Machine
 #workDir = "C:/GIS/Hurricanes/2015_Season/" # On local Work & Home Machine
 #workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
 #workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
 #workDir = "T:/for_DaveE/2015Good/" # TEMP drive On OCM Network
 dataDir = workDir + "Data/"  # Data location
 #dataDir = workDir + "Data/2015runs/"
-if TESTING:  
+if TESTING:
     h2AtlRaw = dataDir + "Test_hurdat2-1851-2015-021716.txt"     # HURDAT2 North Atlantic Data 2015
     h2nepacRaw = dataDir + "Test_hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "Test_Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
@@ -86,15 +89,15 @@ else:
 #    h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
 #    h2AtlRaw = dataDir + "hurdat2-1851-2015-070616.txt"     # HURDAT2 North Atlantic Data 2015
 #    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
-    h2AtlRaw = dataDir + "hurdat2-1851-2017-050118.txt"     # HURDAT2 North Atlantic Data 2015
-    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2017-050418.txt" # HURDAT2 NE North Pacific Data
+    h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
+    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-070119.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r10.csv" #Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
 #    ibRaw = ""
     resultsDir = workDir + "Results/Update2017v03r10_2018-06-11/"  #  Location for final data (used to be Results/ProdReady_20150720/)
 
 """ Create the needed Results directory if it doesn't exist """
 os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
-""" Adding an ingest.log ascii file to record QA/QC results in the Results 
+""" Adding an ingest.log ascii file to record QA/QC results in the Results
     directory. """
 logFileName = resultsDir + "ingest.log"
 logFile = open(logFileName,'w')
@@ -113,9 +116,9 @@ yearsJSON = resultsDir + 'hurricaneYears.json'
 
 """--------------------------------------------------------------------"""
 
-""" Define EPSG code for needed projection.  Either Manually or using 
+""" Define EPSG code for needed projection.  Either Manually or using
     modification of this:
-    
+
     def getPRJwkt(epsg):
         import urllib
         f=urllib.urlopen("http://spatialreference.org/ref/epsg/{0}/prettywkt/".format(epsg))
@@ -124,8 +127,8 @@ yearsJSON = resultsDir + 'hurricaneYears.json'
 """
 if WEBMERC:
     earthRadius = 6378137.0
-    earthCircumference = math.pi * 2.0 * earthRadius  
-    """ Define EPSG:3857 -- WGS84 Web Mercator (Auxiliary Sphere) Projection string 
+    earthCircumference = math.pi * 2.0 * earthRadius
+    """ Define EPSG:3857 -- WGS84 Web Mercator (Auxiliary Sphere) Projection string
         http://spatialreference.org/ref/sr-org/7483/ """
 #    epsg = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs'
 #    epsg = 'PROJCS["WGS 84 / Pseudo-Mercator",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["Degree",0.017453292519943295]],PROJECTION["Mercator"],PARAMETER["central_meridian",0],PARAMETER["scale_factor",1],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["Meter",1]]'
@@ -142,15 +145,15 @@ if WEBMERC:
 #         'PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],'+
 #         'AXIS["X",EAST],AXIS["Y",NORTH],EXTENSION["PROJ4",'+
 #         '"+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs"],AUTHORITY["EPSG","3857"]]'
-# 
+#
 #==============================================================================
     """ ESRI prj file below """
     epsg = 'PROJCS["WGS_1984_Web_Mercator_Auxiliary_Sphere",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Mercator_Auxiliary_Sphere"],PARAMETER["False_Easting",0.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",0.0],PARAMETER["Standard_Parallel_1",0.0],PARAMETER["Auxiliary_Sphere_Type",0.0],UNIT["Meter",1.0]]'
-else:    
+else:
     """ Define WGS84 Geographic Projection string """
     epsg = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
     """--------------------------------------------------------------------"""
-  
+
 
 """ Get data for ENSO stage for each segment by referencing year and
  month against data set at:
@@ -184,7 +187,7 @@ Missing=[None, None]
 #    return "no report"
 """--------------------------------------------------------------------"""
 def getCat(nature, wind):
-    """ This function returns the appropriate classification of 
+    """ This function returns the appropriate classification of
     Saffir-Simpson scale or other classification given the reported
     Nature and 1-minute averaged wind speed in nautical miles/hour (Knots).
     The logic used in the previous SQL calculations for classification was:
@@ -206,7 +209,7 @@ def getCat(nature, wind):
     NOTE: As of 4/29/2015, the IBTrACS and HURDAT2 data files used a total
        of 13 different Nature names:
  'DB', 'DS', 'ET', 'EX', 'HU', 'LO', 'MX', 'NR', 'PT', 'SD', 'SS', 'TD', 'TS'
- IBTrACS uses just these in v03r06: 
+ IBTrACS uses just these in v03r06:
  ['DS', 'ET', 'MX', 'NR', 'SS', 'TS']
  HURDAT2014/2015 uses:
  ['DB', 'ET', 'EX', 'HU', 'LO', 'PT', 'SD', 'SS', 'TD', 'TS', 'TY', 'WV']
@@ -217,28 +220,28 @@ def getCat(nature, wind):
     and the Saffir-Simpson values as revised by the National Hurricane Center
     and defined in this document:
             http://www.nhc.noaa.gov/pdf/sshws_2012rev.pdf
-    
+
     NOTE BENE: In addition, we have extended the UPPER boundary defined
-    by the SS Scale up to, but not including, the lower boundary of the 
-    next higher class.  This is necessary because the NHC's Saffir-Simpson 
+    by the SS Scale up to, but not including, the lower boundary of the
+    next higher class.  This is necessary because the NHC's Saffir-Simpson
     definitions are stricly for integer values of wind speed, which makes
-    sense given the lack of precision at which they can accurately be 
-    measured.  HOWEVER, when converting from units and averaging intervals 
-    from other reporting Centers, there may be convereted 1-minute winds that 
-    fall within the 1 knot "gaps" in the NHC's Saffir-Simpson definations. 
+    sense given the lack of precision at which they can accurately be
+    measured.  HOWEVER, when converting from units and averaging intervals
+    from other reporting Centers, there may be convereted 1-minute winds that
+    fall within the 1 knot "gaps" in the NHC's Saffir-Simpson definations.
     In order to classify those wind speeds, we use the use the following
     logic to assign a storm to some class X:
         Lower Bound(Class X) <= Converted 1-min Wind < Upper Bound(Class X+1)
-        
+
     Questions can be directed to:
         Dave Eslinger, dave.eslinger@noaa.gov
-        
+
     """
-    
+
     """ New (9 June 2016) logic: classify everything as a tropical
         system according to its wind speed.  Then only reclassify those
         that specifically are listed as extra-tropical.  This should get
-        rid of many of the NR results, which occur in areas beyond the US 
+        rid of many of the NR results, which occur in areas beyond the US
         reporting areas and which do not use the Saffir-Simpson Scale.
         """
     if wind >= 137:
@@ -258,13 +261,13 @@ def getCat(nature, wind):
     else:
         catSuffix = "NR"
 #        print('No Wind speed, Nature, wind, suffix = ',nature,wind,catSuffix)
-        
+
     """ Now figure out what it is """
     if (nature[0] == 'E'):
         return 'ET'
     else:
         return catSuffix
-    
+
 #==============================================================================
 """------------------------END OF getCat-------------------------------"""
 
@@ -330,24 +333,24 @@ numAllMissing = 0
 numSinglePoint = 0
 numGoodObs = 0
 
-""" Read IBTrACS data 
+""" Read IBTrACS data
     This data is not split by storms, rather every row has all info in it
     Therefore, we must read the data, find out if it is a new storm, and
-    if it is, then write the previous storm object/information to allStorms 
-    and create a new thisStorm object and populate it with the first 
+    if it is, then write the previous storm object/information to allStorms
+    and create a new thisStorm object and populate it with the first
     observation.
-    
+
     We know the IBTrACS data starts with 3 header rows, then the 4th row
-    is our first legitimate data record.  
+    is our first legitimate data record.
     Initialize the first thisStorm object from that"""
 ibFiles = [ibRaw]
 #ibFiles = []
-ibNum = 0 # Initialize IBTrACS storm counter, 
+ibNum = 0 # Initialize IBTrACS storm counter,
           # it will increment when storm end is found
 ibSkipNum = 0  # Number of NA and EP storms skipped to prevent HURDAT2 duplicates
 for i, file in enumerate(ibFiles):
     print (i, file)
-    print ('IBTrACS file: ', file)    
+    print ('IBTrACS file: ', file)
     with open(ibRaw, "r") as rawObsFile:
          head1 = rawObsFile.readline()
          head2 = rawObsFile.readline()
@@ -359,8 +362,8 @@ for i, file in enumerate(ibFiles):
          """ Create first storm """
          thisStorm = Storm(vals[0],          # Unique IBTrACS ID
                            vals[5].strip())  # Name, spaces removed
-    #     observation = Segment(vals[6],  # ISO 8601 Time 
-         observation = Segment(vals[6],  # ISO 8601 Time 
+    #     observation = Segment(vals[6],  # ISO 8601 Time
+         observation = Segment(vals[6],  # ISO 8601 Time
                                vals[8],  # Lat
                                vals[9],  # Lon
                                vals[10], # Wind speed
@@ -371,9 +374,9 @@ for i, file in enumerate(ibFiles):
          thisStorm.startLon = observation.startLon
          thisStorm.startLat = observation.startLat
          thisStorm.name = thisStorm.name + " " \
-             + thisStorm.startTime.strftime('%Y') 
+             + thisStorm.startTime.strftime('%Y')
          # enter end time in case this is only observation.
-         thisStorm.endTime = observation.time 
+         thisStorm.endTime = observation.time
          print(thisStorm.startTime)
          nseg = 1
          thisStorm.source = 0            # Flag data source as IBTrACS
@@ -386,7 +389,7 @@ for i, file in enumerate(ibFiles):
              else: # Data read: Parse it and test to see if it is a new storm
                  vals = lineVals.split(",")
                  if vals[0] == thisStorm.uid :  # Same storm so add the record
-                     observation = Segment(vals[6],  # ISO 8601 Time 
+                     observation = Segment(vals[6],  # ISO 8601 Time
                                            vals[8],  # Lat
                                            vals[9],  # Lon
                                            vals[10], # Wind speed
@@ -420,12 +423,12 @@ for i, file in enumerate(ibFiles):
     #                        " has ", thisStorm.numSegs," observations \n    which ",
     #                        "should be ", nseg)
     #==============================================================================
-                     
+
                      """ Create a new storm record for the newly read storm """
                      thisStorm = Storm(vals[0],          # Unique IBTrACS ID
                                        vals[5].strip())  # Name, spaces removed
                      """ Add the first segment information to the storm """
-                     observation = Segment(vals[6],  # ISO 8601 Time 
+                     observation = Segment(vals[6],  # ISO 8601 Time
                                            vals[8],  # Lat
                                            vals[9],  # Lon
                                            vals[10], # Wind speed
@@ -437,12 +440,12 @@ for i, file in enumerate(ibFiles):
                      thisStorm.startLat = observation.startLat
                      # enter end time in case this is only observation.
                      thisStorm.name = thisStorm.name + " " \
-                         + thisStorm.startTime.strftime('%Y') 
-                     thisStorm.endTime = observation.time 
+                         + thisStorm.startTime.strftime('%Y')
+                     thisStorm.endTime = observation.time
                      nseg = 1 # New storm ready for next record
                      thisStorm.source = 0 # Flag data source as IBTrACS
                      thisStorm.basin = vals[3].strip()
-         """ EOF found on IBTrACS: Write last data and close out """           
+         """ EOF found on IBTrACS: Write last data and close out """
          thisStorm.numSegs = len(thisStorm.segs)
          """ Only keep the storm if there is more than ONE observation: """
          if(thisStorm.numSegs > 1):
@@ -455,7 +458,7 @@ for i, file in enumerate(ibFiles):
     #             print("Duplicate in basin",thisStorm.basin)
          else:
              numSinglePoint += 1
-             
+
          ibNum += 1 # Increment counter for IBTrACS storms
     #==============================================================================
     #      print("Last IBTrACS storm # ",ibNum," named ",thisStorm.name,
@@ -466,7 +469,7 @@ for i, file in enumerate(ibFiles):
 """ End of IBTrACS Ingest """
 
 """ Read HURDAT2 data """
-     
+
 #==============================================================================
 
 #==============================================================================
@@ -478,12 +481,12 @@ for i, file in enumerate(hFiles):
         """h2reader = csv.reader(rawObsFile, delimiter=",")
         for row in h2reader:
             print(row)"""
-        """ Need a manual loop here to read a header record then 
-        the rest of the observations """   
+        """ Need a manual loop here to read a header record then
+        the rest of the observations """
         while True: # With this and the below break, read to EOF
             lineVals = rawObsFile.readline()
             if ( (not lineVals) # Finds EOF or any blank line
-            or lineVals == "\n" or lineVals == "\r" or lineVals == "\n\r"): 
+            or lineVals == "\n" or lineVals == "\r" or lineVals == "\n\r"):
                 break # Break on EOF
 
             """ This is a new storm so create a new storm record for it """
@@ -491,7 +494,7 @@ for i, file in enumerate(hFiles):
             hstormNum[i] += 1
             vals = lineVals.split(",")
             #print ("vals = ",vals[0],vals[1],vals[2], len(vals))
-            thisStorm = Storm(vals[0],  # Create new storm using Unique ID 
+            thisStorm = Storm(vals[0],  # Create new storm using Unique ID
                               vals[1].strip())  # and Name w/out spaces
             thisStorm.numSegs =  int(vals[2])    # Number of Observations
             thisStorm.source = i + 1 # Flag data source as HURDAT ATL or NEPAC
@@ -501,7 +504,7 @@ for i, file in enumerate(hFiles):
             for ob in range(thisStorm.numSegs):
                 lineVals = rawObsFile.readline()
                 if ( (not lineVals) # Finds EOF or any blank line
-                or lineVals == "\n" or lineVals == "\r" 
+                or lineVals == "\n" or lineVals == "\r"
                 or lineVals == "\n\r"): # lineVals is false at EOF
                     break # Break on EOF
                 """ Create a new observation record """
@@ -511,7 +514,7 @@ for i, file in enumerate(hFiles):
                 otime += vals[1][1:3] + ":" + vals[1][3:] + ":00"
 
                 if (vals[4][len(vals[4])-1] == "N"):
-                    lat = float(vals[4][:len(vals[4])-1]) 
+                    lat = float(vals[4][:len(vals[4])-1])
                 else:
                     lat = -1. * float(vals[4][:len(vals[4])-1])
                 try:
@@ -535,18 +538,18 @@ for i, file in enumerate(hFiles):
                                       vals[7],   # Air Pressure
                                       vals[3] )  # Nature
                 thisStorm.segs.append(observation)
-            """ All observations read for this new storm data 
+            """ All observations read for this new storm data
                 add thisStorm to the allStorms """
 #==============================================================================
 #             print ("thisStorm name ", thisStorm.name,"has",
-#                     thisStorm.numSegs, "observations and is index ", numStorms)            
+#                     thisStorm.numSegs, "observations and is index ", numStorms)
 #==============================================================================
             thisStorm.startTime = thisStorm.segs[0].time
             thisStorm.startLon = thisStorm.segs[0].startLon
             thisStorm.startLat = thisStorm.segs[0].startLat
             #thisStorm.name = thisStorm.name +" "+ thisStorm.startTime[:4]
             thisStorm.name = thisStorm.name + " " \
-                 + thisStorm.startTime.strftime('%Y') 
+                 + thisStorm.startTime.strftime('%Y')
             thisStorm.endTime = thisStorm.segs[len(thisStorm.segs)-1].time
             """ Only keep the storm if there is more than ONE observation: """
             if(thisStorm.numSegs != len(thisStorm.segs)):
@@ -558,15 +561,15 @@ for i, file in enumerate(hFiles):
                  numSinglePoint += 1
 #==============================================================================
 #             print ("Storm number ", len(allStorms)," named ",
-#                    allStorms[numStorms].name,"has ", 
+#                    allStorms[numStorms].name,"has ",
 #                    len(allStorms[numStorms].segs), allStorms[numStorms].numSegs)
 #==============================================================================
-""" End of HURDAT2 Ingest"""   
+""" End of HURDAT2 Ingest"""
 
 """ Sort combined storms and keep unique ones
     Use sotrm.source field to pick either HURDAT or IBTrACS storms
     based on value of use_HURDAT boolean """
-    
+
 allSorted = sorted(allStorms, key = lambda storm: storm.startTime)
 
 allStorms = [] # Clear allStorms variable to use for unique storms
@@ -583,58 +586,58 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
         to the length of allStorms, whichever is shortest """
     lastGood = len(allStorms)-1
     for j in range(lastGood,lastGood-min(dupRange, lastGood),-1 ):
-        """ To find a duplicate name, use the .find method for stings.  
-        This will return a value of '-1' if the string is not found.  
-        NOTE: The IBtRACS names are frequently combinations of names 
-        from multiple reporting Centers.  
-        Therefore, we need to do this check for both 'directions' and 
+        """ To find a duplicate name, use the .find method for stings.
+        This will return a value of '-1' if the string is not found.
+        NOTE: The IBtRACS names are frequently combinations of names
+        from multiple reporting Centers.
+        Therefore, we need to do this check for both 'directions' and
         if we add the results, we should get '-2' for no duplicates"""
 #==============================================================================
 #         sameName = ( allSorted[i].name.find(allStorms[j].name)
 #                  + allStorms[j].name.find(allSorted[i].name)  )
 #==============================================================================
         """ Check data sources.  If they are not IBTrACS vs HURDAT, then
-            the storms are not duplicates.  
+            the storms are not duplicates.
             N.B.: This assumes no intra-dataset duplicates, which seems true.
-            **** ALERT *** The above assumption is incorrect.  IBTrACS has 
+            **** ALERT *** The above assumption is incorrect.  IBTrACS has
             many self-duplicates.  We now check with those and remove duplicates
             unless they are in different basins. 5/31/2016 DLE """
         if(allSorted[i].source == allStorms[j].source):
             continue # These are from different basins so are not duplicates
-            
-        """ There can be duplicates in IBTrACS (and also Hurdat), so need to 
+
+        """ There can be duplicates in IBTrACS (and also Hurdat), so need to
         check all storms no matter the source.  However, storms from different
-        basins should not be duplicates, so check for that, since those can 
+        basins should not be duplicates, so check for that, since those can
         meet the other duplicate requirements, e.g., LIN and CAROLINE."""
-        
-        """ Now I'm not so sure about the duplicates w/in data sets.  
+
+        """ Now I'm not so sure about the duplicates w/in data sets.
             Many identified are not duplicates, they start too far apart.
             DLE 12/21/2016   """
         if(allSorted[i].basin != allStorms[j].basin):
             continue # These are from different basins so are not duplicates
-        
+
         """ Check names, but omit the year from the search string.
             We omit the year to be able to search for the names as substrings
             within each other.  The name is just appended on and will confuse
             the search logic. """
-        AsortedName = allSorted[i].name[:len(allSorted[i].name)-5]  
-        AallName =  allStorms[j].name[:len(allStorms[j].name)-5]   
-#        AXsortedName = allSorted[i].name[:len(allSorted[i].name)-0]  
-#        AXallName =  allStorms[j].name[:len(allStorms[j].name)-0]   
+        AsortedName = allSorted[i].name[:len(allSorted[i].name)-5]
+        AallName =  allStorms[j].name[:len(allStorms[j].name)-5]
+#        AXsortedName = allSorted[i].name[:len(allSorted[i].name)-0]
+#        AXallName =  allStorms[j].name[:len(allStorms[j].name)-0]
         AallInSorted = AsortedName.find(AallName)
-        AsortedInAll =  AallName.find(AsortedName)  
+        AsortedInAll =  AallName.find(AsortedName)
         if AallInSorted + AsortedInAll != -2: # Duplicate names found
             """ First check that BASINS are the same.  Unfortunately,
             there are duplicate storm names in the same year, but in different
-            BASINS, esp. for the North Atlantic and Western Pacific in the 
+            BASINS, esp. for the North Atlantic and Western Pacific in the
             late 1970s"""
             if (allSorted[i].basin != allStorms[j].basin):
                 # The basins are different, so not duplicates. CONTINUE to next j loop
                 continue
-            if ( allSorted[i].name.find("NAME") != -1 or 
+            if ( allSorted[i].name.find("NAME") != -1 or
                  allSorted[i].name.find("KNOWN") != -1 ):
                  """ Unnamed storms are common so check for identical
-                     start times.  If different, they are different 
+                     start times.  If different, they are different
                      storms so CONTINUE to next j loop """
                  if allSorted[i].startTime != allStorms[j].startTime:
                      continue #different start time, not true duplicates
@@ -642,28 +645,28 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
             isDuplicate = True
             dupIndex = j
             break
-    
+
     if isDuplicate:
         logFile.write('Duplicate set ' + str(nDups) + ' found! \n' +
                'Source\tUID\t\tName\t\tStart Date\t\tBasin\tLon\tLat\n' +
                str(allSorted[i].source) +"\t"+ str(allSorted[i].uid) +"\t"+
                allSorted[i].name +"\t"+
-               str(allSorted[i].startTime) +"\t"+ 
+               str(allSorted[i].startTime) +"\t"+
                str(allSorted[i].basin) +"\t"+
                str(allSorted[i].startLon) +"\t"+
                str(allSorted[i].startLat) + ' and \n' +
-               str(allStorms[dupIndex].source) +"\t"+ 
+               str(allStorms[dupIndex].source) +"\t"+
                str(allStorms[dupIndex].uid) +"\t"+
                allStorms[dupIndex].name +"\t"+
-               str(allStorms[dupIndex].startTime) +"\t"+ 
-               str(allStorms[dupIndex].basin) +"\t"+ 
-               str(allStorms[dupIndex].startLon) +"\t"+ 
+               str(allStorms[dupIndex].startTime) +"\t"+
+               str(allStorms[dupIndex].basin) +"\t"+
+               str(allStorms[dupIndex].startLon) +"\t"+
                str(allStorms[dupIndex].startLat) + "\n")
         if use_HURDAT:
              if allSorted[i].source > 0: #This is a HURDAT record so replace old one
-                """ NOTE BENE: If choosing HURDAT over IBTrACS, then replace 
-                the Unique idenitifier with teh IBTrACS ID.  That is needed 
-                for the Storm Details lookup from the IBTrACS web site! 
+                """ NOTE BENE: If choosing HURDAT over IBTrACS, then replace
+                the Unique idenitifier with the IBTrACS ID.  That is needed
+                for the Storm Details lookup from the IBTrACS web site!
                 DLE 6/13/2016 """
                 allSorted[i].uid = allStorms[dupIndex].uid #replace w/ IBTrACS UID
                 allStorms[dupIndex] = allSorted[i]
@@ -679,11 +682,11 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
                     """Pick the storm with the most names assigned to it.
                        This is so that it will show up in searches with any
                        of its potential names.  Also, these tend to be storms
-                       with the longer tracks since they are reported by a 
+                       with the longer tracks since they are reported by a
                        larger number of reporting groups. """
                     """ STILL NEEDS to Be FIXED """
                     pass
-                else:                        
+                else:
                     allStorms[dupIndex] = allSorted[i]
 
     else: # not a duplicate, so copy it to allStorms
@@ -707,8 +710,8 @@ for i, storm in enumerate(allStorms):
     jLast = storm.numSegs-1
     j = -1  # Make a new counter in case we add segments by splitting around 180
     for jj in range(0,jLast):
-        j+= 1 
-        
+        j+= 1
+
         """ Find end Lat and Lon for each segment, correcting if needed"""
         """ Make sure LONGITUDE does not change sign across the +-180 line
             Fix this by adjusting the STARTLON of the next segment """
@@ -723,8 +726,8 @@ for i, storm in enumerate(allStorms):
                 print('Adjusting Lon wrap-around: Lon(i), Lon(i+1), adjLon',
                       storm.segs[j].startLon, storm.segs[j+1].startLon,adjLon)
                 storm.segs[j+1].startLon = adjLon
-        """ put adjusted or NOT adjusted start lat & lon at (j+1) 
-            in end lat/lon for (j)""" 
+        """ put adjusted or NOT adjusted start lat & lon at (j+1)
+            in end lat/lon for (j)"""
 
         """ NOTE BENE: If start and end are too close, offset End slightly """
         segLength = math.sqrt((storm.segs[j+1].startLat-
@@ -734,26 +737,26 @@ for i, storm in enumerate(allStorms):
             #print('Tweaking identical points, segLength = ', segLength)
             storm.segs[j+1].startLat += 0.001
             storm.segs[j+1].startLon += 0.001
-              
+
         storm.segs[j].endLat = storm.segs[j+1].startLat
         storm.segs[j].endLon = storm.segs[j+1].startLon
         """ ---------------------END 180 Stuff ----------------------------"""
 
 
         """ --- Saffir-Simpson value for each segment"""
-        storm.segs[j].saffir = getCat(storm.segs[j].nature, 
+        storm.segs[j].saffir = getCat(storm.segs[j].nature,
                                     (storm.segs[j].wsp))
 #==============================================================================
 #         """ For each segment in the storm find: """
 # #        allNatures.append(storm.segs[j].nature)
 #         allNatures.append(storm.segs[j].saffir)
-# 
+#
 #==============================================================================
         """ Get data for ENSO stage for each segment by start time """
        # thisKey = storm.segs[j].time[:7]
         thisKey = storm.segs[j].time.strftime('%Y-%m')
-        storm.segs[j].enso = ensoLookup.get(thisKey) 
-        #print(thisKey, ensoLookup.get(thisKey),storm.segs[j].enso)          
+        storm.segs[j].enso = ensoLookup.get(thisKey)
+        #print(thisKey, ensoLookup.get(thisKey),storm.segs[j].enso)
         """ Find Max Winds and Saffir-Simpson and Min Pressures """
         if storm.segs[j].wsp > storm.maxW: # New Max found so update MaxW and SS
             storm.maxW = storm.segs[j].wsp
@@ -761,16 +764,16 @@ for i, storm in enumerate(allStorms):
         if storm.segs[j].pres < storm.minP and storm.segs[j].pres > 0:
             storm.minP = storm.segs[j].pres
 
-    """ Now need to process the very last segment """ 
+    """ Now need to process the very last segment """
     """ --- ending Lat and Lon for each segment is just the same
-    starting location, but offset by 0.01 degrees.  
+    starting location, but offset by 0.01 degrees.
     This allows for the creation of a valid attributed line for every
-    actual observation."""   
+    actual observation."""
     storm.segs[jLast].endLat = float(storm.segs[jLast].startLat + 0.0001)
     storm.segs[jLast].endLon = float(storm.segs[jLast].startLon + 0.0001)
-   
+
     """ --- Saffir-Simpson value for each segment"""
-    storm.segs[jLast].saffir = getCat(storm.segs[jLast].nature, 
+    storm.segs[jLast].saffir = getCat(storm.segs[jLast].nature,
                                 (storm.segs[jLast].wsp))
     """ Find Max Winds and Saffir-Simpson and Min Pressures """
     if storm.segs[jLast].wsp > storm.maxW: # New Max found so update MaxW and SS
@@ -784,16 +787,16 @@ for i, storm in enumerate(allStorms):
     except:
         print(j, storm.segs[jLast].time)
     #thisKey = storm.segs[jLast].time[:7]
-    storm.segs[jLast].enso = ensoLookup.get(thisKey) 
-#    storm.segs[jLast].enso = ensoLookup[storm.segs[jLast].time[:7]]           
+    storm.segs[jLast].enso = ensoLookup.get(thisKey)
+#    storm.segs[jLast].enso = ensoLookup[storm.segs[jLast].time[:7]]
 
-    """ If Maximum Wind and Minimum Pressure are still the inital values, 
+    """ If Maximum Wind and Minimum Pressure are still the inital values,
     replace them with MISSING VALUE FLAGS """
     if storm.maxW == -99.:
         storm.maxW = "-1.0"
     if storm.minP == 9999.:
         storm.minP = "-1.0"
-        
+
 #==============================================================================
 # uniqueNatures = set(allNatures)
 # print(sorted(uniqueNatures))
@@ -829,7 +832,7 @@ missingTracks.autobalance = 1 # make sure all shapes have records
 for attribute in stormFields:
     goodTracks.field(attribute[0],attribute[1],attribute[2]) # Add Fields
     missingTracks.field(attribute[0],attribute[1],attribute[2]) # Add Fields
-     
+
 
 """ For SEGMENTS : """
 segmentFields = [['SEGMNTOID','N','10'],
@@ -851,7 +854,7 @@ segmentFields = [['SEGMNTOID','N','10'],
                  ['Nature','C','20'],
                  ['ENSO','C','20'],
                  ['EndLat','N','20'],
-                 ['EndLon','N','20']]               
+                 ['EndLon','N','20']]
 
 """ Create and initalize the fields for the needed Tracks Shapefiles """
 goodSegments = shapefile.Writer(shapefile.POLYLINE) # New shapefile
@@ -859,8 +862,8 @@ goodSegments.autoBalance = 1 # make sure all shapes have records
 missingSegments = shapefile.Writer(shapefile.POLYLINE) # New shapefile
 missingSegments.autoBalance = 1 # make sure all shapes have records
 for attribute in segmentFields: # Add Fields for track shapefile
-    goodSegments.field(attribute[0],attribute[1],attribute[2]) 
-    missingSegments.field(attribute[0],attribute[1],attribute[2]) 
+    goodSegments.field(attribute[0],attribute[1],attribute[2])
+    missingSegments.field(attribute[0],attribute[1],attribute[2])
 """Lists needed for SCRAMBLING Segments """
 goodSegCoords = []
 goodSegParams = []
@@ -873,10 +876,10 @@ missingSegNum = 0
 missingSegIndx= []
 stormOID = 0 # Counter to make unique ID number for each storm
 segmentOID = 0 # Counter to make unique ID number for each segment
-       
+
 for i, storm in enumerate(allStorms):
     stormOID = stormOID + 1
-    basin = storm.basin            
+    basin = storm.basin
     trackCoords = [] # Create list for stormTracks shapefile
     """ Find out if this hurricane has any valid pressure or wind speed obs """
     if (float(storm.minP) < 0.0 and float(storm.maxW) < 0.0 ):
@@ -893,7 +896,7 @@ for i, storm in enumerate(allStorms):
 #             print('AGAIN Crossing 180')
 #==============================================================================
             if BREAK180:
-                """ Find new broken coordinates, then convert to webmerc if 
+                """ Find new broken coordinates, then convert to webmerc if
                     needed """
                 sLon = thisSegment.startLon
                 sLat = thisSegment.startLat
@@ -905,7 +908,7 @@ for i, storm in enumerate(allStorms):
                 deltaLon = thisSegment.startLon - (
                 (math.copysign(360.0,thisSegment.startLon)
                      + thisSegment.endLon)) # Makes Start & end lons same sign
-                mLat = sLat + (sLat - eLat)* ((thisSegment.startLon - 
+                mLat = sLat + (sLat - eLat)* ((thisSegment.startLon -
                     math.copysign(180.0,thisSegment.startLon))/
                         deltaLon )
 
@@ -935,31 +938,31 @@ for i, storm in enumerate(allStorms):
             segCoords = [[[sLon, sLat],[mwLon,mLat]],
                          [[meLon,mLat],[eLon, eLat]]]
 #==============================================================================
-#             """ DEBUG: Print out info for Georges, which is one of many storms 
+#             """ DEBUG: Print out info for Georges, which is one of many storms
 #                 generating shapefiles with bad geometry due to segments too short. """
 #             if(storm.name == 'GEORGES 1998'):
-#                 print(sLat,sLon, eLat, eLon,'Total Length = ', 
-#                       math.sqrt( (sLon - eLon)**2 + (sLat-eLat)**2)) 
-#                 print('  Leg 1 Length = ', 
+#                 print(sLat,sLon, eLat, eLon,'Total Length = ',
+#                       math.sqrt( (sLon - eLon)**2 + (sLat-eLat)**2))
+#                 print('  Leg 1 Length = ',
 #                       math.sqrt( (sLon - meLon)**2 + (sLat-mLat)**2))
-#                 print('  Leg 2 Length = ', 
-#                       math.sqrt( (mwLon - eLon)**2 + (mLat-eLat)**2))                
+#                 print('  Leg 2 Length = ',
+#                       math.sqrt( (mwLon - eLon)**2 + (mLat-eLat)**2))
 #             """ -------------------  END DEBUG ----------------------"""
 #==============================================================================
 
- 
+
             """ Add coordinates to the Track shapefile list """
             trackCoords.append([[sLon, sLat],[mwLon,mLat]])
             trackCoords.append([[meLon,mLat],[eLon, eLat]])
-        else:               
+        else:
             """ Project to web mercator if need, otherwise just geographic"""
             if WEBMERC:
                 sLon = earthRadius * thisSegment.startLon * math.pi/180
-                sLat = earthRadius * math.log( 
+                sLat = earthRadius * math.log(
                     math.tan((math.pi/4) + ((thisSegment.startLat*math.pi/180)/2)))
                 eLon = earthRadius * thisSegment.endLon * math.pi/180
                 try:
-                    eLat = earthRadius * math.log( 
+                    eLat = earthRadius * math.log(
                         math.tan((math.pi/4) + ((thisSegment.endLat*math.pi/180)/2)))
                 except:
                     print(thisStorm.name, sLon, sLat, thisSegment.endLat)
@@ -970,18 +973,18 @@ for i, storm in enumerate(allStorms):
                 eLat = thisSegment.endLat
             segCoords = [[[sLon, sLat],[eLon, eLat]]]
 #==============================================================================
-#             """ DEBUG: Print out info for Georges, which is one of many storms 
+#             """ DEBUG: Print out info for Georges, which is one of many storms
 #                 generating shapefiles with bad geometry due to segments to short. """
 #             if(storm.name == 'GEORGES 1998'):
-#                 print(sLat,sLon, eLat, eLon,'Total Length = ', 
-#                       math.sqrt( (sLon - eLon)**2 + (sLat-eLat)**2)) 
+#                 print(sLat,sLon, eLat, eLon,'Total Length = ',
+#                       math.sqrt( (sLon - eLon)**2 + (sLat-eLat)**2))
 #             """ -------------------  END DEBUG ----------------------"""
 #==============================================================================
 
             """ Add coordinates to the Track shapefile list """
             trackCoords.append([[sLon, sLat],[eLon, eLat]])
-                
-        """ We need to output these attributes: 
+
+        """ We need to output these attributes:
         ['STORMID','MSW_1min','BeginObHr','BeginLat','BEGINLON',
                  'Min_Press',
                  'Basin','SS_Scale','DateNTime','DMSW_1min',
@@ -995,7 +998,7 @@ for i, storm in enumerate(allStorms):
         dispDate = dt.datetime.strftime(thisSegment.time,'%b %d, %Y')
         dispDateTime = dt.datetime.strftime(thisSegment.time,'%b %d, %Y %Hz')
 
-             
+
         """ Add this segment's data to the appropriate segments shapefile """
         if goodStorm:
             goodSegCoords.append(segCoords)
@@ -1019,10 +1022,10 @@ for i, storm in enumerate(allStorms):
                            thisSegment.nature,  # Nature (not quite SS)
                            thisSegment.enso,    # ENSO Flag
                            thisSegment.endLat,  # End Lat
-                           thisSegment.endLon] )  # End Long.                          
+                           thisSegment.endLon] )  # End Long.
             goodSegIndx.append(goodSegNum)
             goodSegNum += 1
-                    
+
         else:
             missingSegCoords.append(segCoords)
             missingSegParams.append([segmentOID,     # Storm Object ID,
@@ -1066,7 +1069,7 @@ for i, storm in enumerate(allStorms):
     rptURL = rptLookup.setdefault(storm.name,Missing)[0]
     strmStart = storm.segs[0].time
     strmEnd = storm.segs[len(storm.segs)-1].time
-    
+
     dateRng = dt.datetime.strftime(strmStart,'%b %d, %Y to ') + \
               dt.datetime.strftime(strmEnd,'%b %d, %Y')
     yr1 = strmStart.year
@@ -1076,10 +1079,10 @@ for i, storm in enumerate(allStorms):
        # print('Storm ',storm.name,' spans years')
         for iyr in range(strmStart.year + 1, strmEnd.year+1):
             filtYrs = filtYrs + ', %d' %iyr
-    #filtYrs = 
+    #filtYrs =
     filtMons = str(strmStart.month)
-    if strmEnd.month < strmStart.month: 
-        """ Storm spans years, so need all months from start through December, 
+    if strmEnd.month < strmStart.month:
+        """ Storm spans years, so need all months from start through December,
             then from January through end."""
         for imnth in range(strmStart.month+1,13):
              filtMons = filtMons + ', %d' %imnth
@@ -1089,10 +1092,10 @@ for i, storm in enumerate(allStorms):
         """ For storms within one year, list consecutive months. """
         for imnth in range(strmStart.month+1,strmEnd.month+1):
              filtMons = filtMons + ', %d' %imnth
-        
+
     intensOrder = 0
     filtClimReg = "Dummy"
-    begObDate = dt.datetime.strftime(storm.startTime,'%Y%m%d') 
+    begObDate = dt.datetime.strftime(storm.startTime,'%Y%m%d')
     endObDate = dt.datetime.strftime(storm.endTime,'%Y%m%d')
     """   --------  End of Extra fields   ------------    """
     """ Append track to appropriate stormTracks list """
@@ -1140,8 +1143,8 @@ for i, storm in enumerate(allStorms):
                        # Extra Attributes below
                        storm.numSegs,   # Number of segments in this Track
                        storm.enso)      # ENSO Flag
-    """ Append the names and the begin and end years to lists so that 
-        JSON files of the unique names and years can be created for use 
+    """ Append the names and the begin and end years to lists so that
+        JSON files of the unique names and years can be created for use
         in the HHT web application """
     stormNames.append(storm.name)
     stormYears.append(dt.datetime.strftime(storm.startTime,'%Y') )
@@ -1149,11 +1152,11 @@ for i, storm in enumerate(allStorms):
 
 
 """ All done, so """
-"""Then scramble Segments if needed.  
+"""Then scramble Segments if needed.
     Then populate Segments shapefile"""
 if (SCRAMBLE):
     random.shuffle(goodSegIndx)
-    random.shuffle(missingSegIndx)   
+    random.shuffle(missingSegIndx)
 for i in goodSegIndx:
     tmp = goodSegCoords[i]
     goodSegments.poly(parts = goodSegCoords[i])
@@ -1164,7 +1167,7 @@ for i in missingSegIndx:
     missingSegments.poly(parts = missingSegCoords[i])
     missingSegments.record(*missingSegParams[i])
 
-        
+
 """ Save shapefile """
 
 if WEBMERC:
@@ -1183,12 +1186,12 @@ goodSegments.save(goodSegmentName)
 # create the PRJ file
 prj1 = open("%s.prj" % goodSegmentName, "w")
 prj1.write(epsg)
-prj1.close()   
+prj1.close()
 
 missingSegments.save(missingSegmentName)
 prj2 = open("%s.prj" % missingSegmentName, "w")
 prj2.write(epsg)
-prj2.close()   
+prj2.close()
 
 goodTracks.save(goodStormFileName)
 prj3 = open("%s.prj" % goodStormFileName, "w")
@@ -1219,18 +1222,18 @@ print("\n    All IBTrACS: {0}, Skipped NA and EP: {1}, Used: {2}".format(
         "\n    HURDAT2_ATL: {0}, HURDAT2_NEPAC: {1}".format(
         hstormNum[0], hstormNum[1]),
         "\nQA: TOTAL STORMS INGESTED = {0}\n".format(
-        (ibNum-ibSkipNum)+hstormNum[0]+hstormNum[1]), 
+        (ibNum-ibSkipNum)+hstormNum[0]+hstormNum[1]),
         "    Single Obs storms removed: {0}, Multi-Obs storms kept: {1}"
         .format(numSinglePoint,len(allSorted)),
         "\nQA: STORMS LENGTH CHECKED = {0} \n(Should equal total ingested.)\n"
         .format(len(allSorted)+numSinglePoint),
         "    Duplicate storms removed: {0}, Unique storms = {1}"
-        .format(nDups,len(allStorms)), 
+        .format(nDups,len(allStorms)),
         "\nQA: STORMS PROCESSED for DUPLICATES = {0}\n".format(
         nDups+len(allStorms)),
         "    (This should equal number of Multi-obs storms.)")
 print ("    Storms with no wind or pressure:",numAllMissing,
-       ", Good storm tracks: ",numGoodObs, 
+       ", Good storm tracks: ",numGoodObs,
        "\nQA: STORMS CHECKED FOR WIND AND PRESSURE VALUES = {0}\n"
        .format(numAllMissing+numGoodObs),
         "    (This should equal number of UNIQUE storms.)\n")
@@ -1241,22 +1244,22 @@ print("\n\nIf the above QA numbers are consistent, there will be ",
 
 logFile.write("\n    All IBTrACS: "+str(ibNum) +
               " Skipped NA and EP: " + str(ibSkipNum) +
-              ", Used: " + str(ibNum-ibSkipNum) + 
-              "\n    HURDAT2_ATL: " + str(hstormNum[0]) + 
+              ", Used: " + str(ibNum-ibSkipNum) +
+              "\n    HURDAT2_ATL: " + str(hstormNum[0]) +
               " HURDAT2_NEPAC: " + str( hstormNum[1]) +
               "\nQA: TOTAL STORMS INGESTED (sum IBTracs USED and HURDAT2) = " +
               str(ibNum-ibSkipNum+hstormNum[0]+hstormNum[1]))
 logFile.write("\n    Single Obs storms removed: " + str(numSinglePoint) +
               " Multi-Obs storms kept: " + str(len(allSorted)) +
-              "\nQA: SUM OF STORMS LENGTH CHECKED = " + str(len(allSorted)+numSinglePoint) + 
+              "\nQA: SUM OF STORMS LENGTH CHECKED = " + str(len(allSorted)+numSinglePoint) +
               " (Should equal total ingested.)")
 logFile.write("\n    Duplicate storms removed: "+str(nDups) +
-              ", Unique storms = " + str(len(allStorms)) + 
-              "\nQA: STORMS PROCESSED for DUPLICATES = " + 
-              str(nDups+len(allStorms)) + 
+              ", Unique storms = " + str(len(allStorms)) +
+              "\nQA: STORMS PROCESSED for DUPLICATES = " +
+              str(nDups+len(allStorms)) +
               "  (This should equal number of Multi-obs storms.)")
 logFile.write("\n    Storms with no wind or pressure: " + str(numAllMissing) +
-              ", Good storm tracks: " + str(numGoodObs) + 
+              ", Good storm tracks: " + str(numGoodObs) +
               "\nQA: TOTAL STORMS CHECKED FOR WIND AND PRESSURE VALUES = " +
               str(numAllMissing+numGoodObs) +
               ", (This should equal number of UNIQUE storms.)\n")
