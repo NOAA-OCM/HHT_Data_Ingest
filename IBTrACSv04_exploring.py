@@ -9,17 +9,32 @@ Historical Hurricane Tracks web site:
     coast.noaa.gov/hurricanes
 
 Created on Mon Jul 15 12:50:34 2019
+    7/18/2019 Playing with Pandas
 
 @author: Dave.Eslinger
 """
 
-#import os
+import pandas as pd
+import datetime as dt
 
 workDir = "C:/GIS/Hurricanes/HHT/2018_Season/" # On OCM Work Machine
 dataDir = workDir + "Data/"  # Data location
 
 ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv"
+ibdf = pd.read_csv(dataDir + "ibtracs.ALL.list.v04r00.csv")
+print(ibdf.head(10))
+print(ibdf.info())
 
+ibUSA = ibdf.filter(regex=r'USA')
+ibUSA.head(3)
+bar = ibUSA.drop(ibUSA.index[0])
+bar.head(3)
+print(ibUSA.index[0])
+ibUSA.info()
+
+foo = ibUSA[ibUSA.USA_LAT != 'degrees_north'] #.index[0])
+foo.head(3)
+print(foo)
 with open(ibRaw, "r") as rawObsFile :
     headers = rawObsFile.readline().split(",")
     units = rawObsFile.readline().split(",")
@@ -43,4 +58,3 @@ with open(ibRaw, "r") as rawObsFile :
         else: # Data read: Parse it and test to see if it is a new storm
             vals = lineVals.split(",")
             print(vals[0:12], vals[19:21], vals[23:26])
-        
