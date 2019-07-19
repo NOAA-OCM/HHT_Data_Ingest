@@ -28,6 +28,7 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
          2017-06-22: Shapefile attribute name changes for new database
          2018-06-11: Updated for 2017 data.  Should be the last version of V03.
          2018-07-15: Updates for 2018 storms, need to read in IBTrACS V04.
+                     Change columns for IBTrACSV0400, clean up old comments DLE
 
 """
 
@@ -69,12 +70,8 @@ use_HURDAT = True
 dupRange = 5
 
 """---------------------DEFINE WORKING DIRECTORIES------------------------"""
-workDir = "C:/GIS/Hurricanes/HHT/2018_Season/" # On OCM Work Machine
-#workDir = "C:/GIS/Hurricanes/HHT/2017_Season/" # On OCM Work Machine
-#workDir = "C:/GIS/Hurricanes/2015_Season/" # On local Work & Home Machine
-#workDir = "N:/nac1/crs/deslinge/Data/Hurricane/" # On OCM Network
-#workDir = "/csc/nac1/crs/deslinge/Data/Hurricane/" # On OCM Linux
-#workDir = "T:/for_DaveE/2015Good/" # TEMP drive On OCM Network
+#workDir = "C:/GIS/Hurricanes/HHT/2018_Season/" # On OCM Work Laptop
+workDir = "K:/GIS/Hurricanes/HHT/2018_Season/" # On Home Desktop
 dataDir = workDir + "Data/"  # Data location
 #dataDir = workDir + "Data/2015runs/"
 if TESTING:
@@ -84,16 +81,12 @@ if TESTING:
 #    ibRaw = dataDir + "Test_Allstorms.ibtracs_csc.Kolia.csv" # IBTrACS CSC v03R08
     resultsDir = workDir + "Results/logTest/"  #  Location for final data
 else:
-#    h2AtlRaw = dataDir + "hurdat2-1851-2015-021716.txt"     # HURDAT2 North Atlantic Data 2015
-#    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
-#    h2AtlRaw = dataDir + "hurdat2-1851-2015-021716V2.txt"     # HURDAT2 North Atlantic Data 2015
-#    h2AtlRaw = dataDir + "hurdat2-1851-2015-070616.txt"     # HURDAT2 North Atlantic Data 2015
-#    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
     h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-070119.txt" # HURDAT2 NE North Pacific Data
-    ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r10.csv" #Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
+    ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" #Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
 #    ibRaw = ""
-    resultsDir = workDir + "Results/Update2017v03r10_2018-06-11/"  #  Location for final data (used to be Results/ProdReady_20150720/)
+    resultsDir = workDir + "Results/"  #  Location for final results
+    
 
 """ Create the needed Results directory if it doesn't exist """
 os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
