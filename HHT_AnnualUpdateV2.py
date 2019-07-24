@@ -75,10 +75,7 @@ workDir = "K:/GIS/Hurricanes/HHT/2018_Season/" # On Home Desktop
 dataDir = workDir + "Data/"  # Data location
 #dataDir = workDir + "Data/2015runs/"
 if TESTING:
-    h2AtlRaw = dataDir + "Test_hurdat2-1851-2015-021716.txt"     # HURDAT2 North Atlantic Data 2015
-    h2nepacRaw = dataDir + "Test_hurdat2-nepac-1949-2015-050916.txt" # HURDAT2 NE North Pacific Data
-    ibRaw = dataDir + "Test_Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-#    ibRaw = dataDir + "Test_Allstorms.ibtracs_csc.Kolia.csv" # IBTrACS CSC v03R08
+    ibRaw = dataDir + "ibTESTv04r00.csv" #Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
     resultsDir = workDir + "Results/logTest/"  #  Location for final data
 else:
     h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
@@ -101,7 +98,7 @@ hFiles = [h2AtlRaw, h2nepacRaw]
 hBasin = ["NA","EP"]
 #hFiles = [h2AtlRaw]
 #hBasin = ["NA"]
-#hFiles = []
+hFiles = []
 
 """ Define JSON filenames """
 namesJS = resultsDir + 'stormnames.js'
@@ -298,13 +295,13 @@ class Observation(object):
                 pass
         self.startLat = float(lat)
         self.startLon = float(lon)
-        if float(wsp) <= 0:
+        if wsp == ' ':        # N.B. This is the IBTrACSv04 no data value
             self.wsp = float(-1.0)
 #            self.wsp = float('NaN') #try NaN for missing wind speeds:
 #            NAN not working with graphing portion of web site.  Go back to -1 as flag
         else:
             self.wsp = float(wsp)
-        if float(pres) <= 800.:
+        if pres == ' ':
             self.pres = float(-1.0)
         else:
             self.pres = float(pres)
@@ -352,6 +349,13 @@ for i, file in enumerate(ibFiles):
          """ Read first IBTrACS Record """
          lineVals = rawObsFile.readline() # First Storm record in IBTrACS
          vals = lineVals.split(",")
+         print(vals)
+         exit
+         """ The vals used has changed with V04r00.  See pdf documentationon 
+         IBTrACS website for all the possibilites.  We will be using the 'USA'
+         values that should be similar to what was previously provided as a
+         'CSC' version of the IBTrACSv03 data. """
+         
          """ Create first storm """
          thisStorm = Storm(vals[0],          # Unique IBTrACS ID
                            vals[5].strip())  # Name, spaces removed
@@ -359,7 +363,7 @@ for i, file in enumerate(ibFiles):
          observation = Segment(vals[6],  # ISO 8601 Time
                                vals[8],  # Lat
                                vals[9],  # Lon
-                               vals[10], # Wind speed
+                               vals[10], # Wind speed Was [10]
                                vals[11], # Pressure
                                vals[7] ) # Nature
          thisStorm.segs.append(observation)
