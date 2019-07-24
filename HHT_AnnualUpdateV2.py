@@ -27,8 +27,11 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
          2016-05-16: test runs with 2015 ibtracs and fixed Hurdat2
          2017-06-22: Shapefile attribute name changes for new database
          2018-06-11: Updated for 2017 data.  Should be the last version of V03.
-         2018-07-15: Updates for 2018 storms, need to read in IBTrACS V04.
+         2019-07-15: Updates for 2018 storms, need to read in IBTrACS V04.
                      Change columns for IBTrACSV0400, clean up old comments DLE
+         2019-07-24: Fixed for pyshp 2.1.0, which had very different calls, etc.
+                     than previous version used.  This version appears to be 
+                     supported by Anaconda. DLE
 
 """
 
@@ -69,7 +72,7 @@ NO391521 = True
 use_HURDAT = True
 dupRange = 5
 
-"""---------------------DEFINE WORKING DIRECTORIES------------------------"""
+"""---------- DEFINE WORKING DIRECTORIES AND FILE NAMES --------------------"""
 #workDir = "C:/GIS/Hurricanes/HHT/2018_Season/" # On OCM Work Laptop
 workDir = "K:/GIS/Hurricanes/HHT/2018_Season/" # On Home Desktop
 dataDir = workDir + "Data/"  # Data location
@@ -100,11 +103,25 @@ hBasin = ["NA","EP"]
 #hBasin = ["NA"]
 hFiles = []
 
+""" Define output shapefile names """
+if WEBMERC:
+    goodSegmentFileName = resultsDir+'goodSegments_WebMerc_2018'
+    goodStormFileName = resultsDir+'goodTracks_WebMerc_2018'
+    missingSegmentFileName = resultsDir+'missingSegments_WebMerc_2018'
+    missingStormFileName = resultsDir+'missingTracks_WebMerc_2018'
+else:
+     goodSegmentFileName = resultsDir+'goodSegments_2018'
+     goodStormFileName = resultsDir+'goodTracks_2018'
+     missingSegmentFileName = resultsDir+'missingSegments_2018'
+     missingStormFileName = resultsDir+'missingTracks_2018'
+
+
 """ Define JSON filenames """
 namesJS = resultsDir + 'stormnames.js'
 yearsJSON = resultsDir + 'hurricaneYears.json'
 
 """--------------------------------------------------------------------"""
+
 
 """ Define EPSG code for needed projection.  Either Manually or using
     modification of this:
@@ -822,9 +839,10 @@ stormFields = [['STRMTRKOID','N','10'],
 #                'NumObs','MaxSaffir','ENSO']
 #==============================================================================
 """ Create and initalize the fields for the needed Tracks Shapefiles """
-goodTracks = shapefile.Writer(shapefile.POLYLINE) #One line & record per storm
+#goodTracks = shapefile.Writer(shapefile.POLYLINE) #One line & record per storm
+goodTracks = shapefile.Writer(goodStormFileName) #, shapeType = 3) #One line & record per storm
 goodTracks.autobalance = 1 # make sure all shapes have records
-missingTracks = shapefile.Writer(shapefile.POLYLINE) #One line & record per storm
+missingTracks = shapefile.Writer(missingStormFileName) #, shapeType = 3) #One line & record per storm
 missingTracks.autobalance = 1 # make sure all shapes have records
 for attribute in stormFields:
     goodTracks.field(attribute[0],attribute[1],attribute[2]) # Add Fields
@@ -854,9 +872,9 @@ segmentFields = [['SEGMNTOID','N','10'],
                  ['EndLon','N','20']]
 
 """ Create and initalize the fields for the needed Tracks Shapefiles """
-goodSegments = shapefile.Writer(shapefile.POLYLINE) # New shapefile
+goodSegments = shapefile.Writer(goodSegmentFileName) #, shapeType = 3) # New shapefile
 goodSegments.autoBalance = 1 # make sure all shapes have records
-missingSegments = shapefile.Writer(shapefile.POLYLINE) # New shapefile
+missingSegments = shapefile.Writer(missingSegmentFileName) #, shapeType = 3) # New shapefile
 missingSegments.autoBalance = 1 # make sure all shapes have records
 for attribute in segmentFields: # Add Fields for track shapefile
     goodSegments.field(attribute[0],attribute[1],attribute[2])
@@ -1098,7 +1116,7 @@ for i, storm in enumerate(allStorms):
     """ Append track to appropriate stormTracks list """
     if goodStorm:
         numGoodObs += 1
-        goodTracks.poly(shapeType=3, parts = trackCoords ) # Add the shape
+        goodTracks.poly(trackCoords ) # Add the shape
         goodTracks.record(stormOID,     # Storm Object ID,
                        storm.uid,       # StormID
                        storm.maxW,      # Max Sustained WInd, 1 min ave period
@@ -1120,7 +1138,7 @@ for i, storm in enumerate(allStorms):
                        storm.enso)      # ENSO Flag
     else:
         numAllMissing += 1
-        missingTracks.poly(shapeType=3, parts = trackCoords ) # Add the shape
+        missingTracks.poly(trackCoords ) # Add the shape
         missingTracks.record(stormOID,     # Storm Object ID,
                        storm.uid,       # StormID
                        storm.maxW,      # Max Sustained WInd, 1 min ave period
@@ -1156,46 +1174,34 @@ if (SCRAMBLE):
     random.shuffle(missingSegIndx)
 for i in goodSegIndx:
     tmp = goodSegCoords[i]
-    goodSegments.poly(parts = goodSegCoords[i])
+    goodSegments.poly(goodSegCoords[i])
     goodSegments.record(*goodSegParams[i])
 
 for i in missingSegIndx:
     tmp = missingSegCoords[i]
-    missingSegments.poly(parts = missingSegCoords[i])
+    missingSegments.poly(missingSegCoords[i])
     missingSegments.record(*missingSegParams[i])
 
 
 """ Save shapefile """
 
-if WEBMERC:
-    goodSegmentName = resultsDir+'goodSegments_WebMerc_2015'
-    goodStormFileName = resultsDir+'goodTracks_WebMerc_2015'
-    missingSegmentName = resultsDir+'missingSegments_WebMerc_2015'
-    missingStormFileName = resultsDir+'missingTracks_WebMerc_2015'
-else:
-     goodSegmentName = resultsDir+'goodSegments_2015'
-     goodStormFileName = resultsDir+'goodTracks_2015'
-     missingSegmentName = resultsDir+'missingSegments_2015'
-     missingStormFileName = resultsDir+'missingTracks_2015'
-
-
-goodSegments.save(goodSegmentName)
+goodSegments.close()
 # create the PRJ file
-prj1 = open("%s.prj" % goodSegmentName, "w")
+prj1 = open("%s.prj" % goodSegmentFileName, "w")
 prj1.write(epsg)
 prj1.close()
 
-missingSegments.save(missingSegmentName)
-prj2 = open("%s.prj" % missingSegmentName, "w")
+missingSegments.close()
+prj2 = open("%s.prj" % missingSegmentFileName, "w")
 prj2.write(epsg)
 prj2.close()
 
-goodTracks.save(goodStormFileName)
+goodTracks.close()
 prj3 = open("%s.prj" % goodStormFileName, "w")
 prj3.write(epsg)
 prj3.close()
 
-missingTracks.save(missingStormFileName)
+missingTracks.close()
 # create the PRJ file
 prj4 = open("%s.prj" % missingStormFileName, "w")
 prj4.write(epsg)
