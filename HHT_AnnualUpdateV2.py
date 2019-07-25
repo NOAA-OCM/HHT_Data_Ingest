@@ -73,18 +73,16 @@ use_HURDAT = True
 dupRange = 5
 
 """---------- DEFINE WORKING DIRECTORIES AND FILE NAMES --------------------"""
-#workDir = "C:/GIS/Hurricanes/HHT/2018_Season/" # On OCM Work Laptop
-workDir = "K:/GIS/Hurricanes/HHT/2018_Season/" # On Home Desktop
+workDir = "C:/GIS/Hurricanes/HHT/2018_Season/" # On OCM Work Laptop
+#workDir = "K:/GIS/Hurricanes/HHT/2018_Season/" # On Home Desktop
 dataDir = workDir + "Data/"  # Data location
-#dataDir = workDir + "Data/2015runs/"
 if TESTING:
     ibRaw = dataDir + "ibTESTv04r00.csv" #Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-    resultsDir = workDir + "Results/logTest/"  #  Location for final data
+    resultsDir = workDir + "Results/Test/"  #  Location for final data
 else:
     h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-070119.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" #Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-#    ibRaw = ""
     resultsDir = workDir + "Results/"  #  Location for final results
     
 
@@ -99,9 +97,7 @@ logFile = open(logFileName,'w')
     (ONLY USED FOR TESTING IBTrACS SPECIFIC CODE) """
 hFiles = [h2AtlRaw, h2nepacRaw]
 hBasin = ["NA","EP"]
-#hFiles = [h2AtlRaw]
-#hBasin = ["NA"]
-hFiles = []
+#hFiles = []
 
 """ Define output shapefile names """
 if WEBMERC:
@@ -1116,7 +1112,7 @@ for i, storm in enumerate(allStorms):
     """ Append track to appropriate stormTracks list """
     if goodStorm:
         numGoodObs += 1
-        goodTracks.poly(trackCoords ) # Add the shape
+        goodTracks.line(trackCoords ) # Add the shape
         goodTracks.record(stormOID,     # Storm Object ID,
                        storm.uid,       # StormID
                        storm.maxW,      # Max Sustained WInd, 1 min ave period
@@ -1138,7 +1134,7 @@ for i, storm in enumerate(allStorms):
                        storm.enso)      # ENSO Flag
     else:
         numAllMissing += 1
-        missingTracks.poly(trackCoords ) # Add the shape
+        missingTracks.line(trackCoords ) # Add the shape
         missingTracks.record(stormOID,     # Storm Object ID,
                        storm.uid,       # StormID
                        storm.maxW,      # Max Sustained WInd, 1 min ave period
@@ -1174,12 +1170,12 @@ if (SCRAMBLE):
     random.shuffle(missingSegIndx)
 for i in goodSegIndx:
     tmp = goodSegCoords[i]
-    goodSegments.poly(goodSegCoords[i])
+    goodSegments.line(goodSegCoords[i])
     goodSegments.record(*goodSegParams[i])
 
 for i in missingSegIndx:
     tmp = missingSegCoords[i]
-    missingSegments.poly(missingSegCoords[i])
+    missingSegments.line(missingSegCoords[i])
     missingSegments.record(*missingSegParams[i])
 
 
