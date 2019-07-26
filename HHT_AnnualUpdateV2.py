@@ -27,7 +27,7 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
          2016-05-16: test runs with 2015 ibtracs and fixed Hurdat2
          2017-06-22: Shapefile attribute name changes for new database
          2018-06-11: Updated for 2017 data.  Should be the last version of V03.
-         2019-07-15: Updates for 2018 storms, need to read in IBTrACS V04.
+         2019-07-15: Updating for 2018 storms, need to read in IBTrACS V04.
                      Change columns for IBTrACSV0400, clean up old comments DLE
          2019-07-24: Fixed for pyshp 2.1.0, which had very different calls, etc.
                      than previous version used.  This version appears to be 
@@ -59,7 +59,9 @@ import stormReportDownload # Local python module
 SCRAMBLE = True
 WEBMERC = True
 BREAK180 = True
-TESTING = False
+TESTING = True
+
+
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
     reporting groups and give the dashed black-colored zig zag look to many
@@ -78,12 +80,12 @@ workDir = "K:/GIS/Hurricanes/HHT/2018_Season/" # On Home Desktop
 dataDir = workDir + "Data/"  # Data location
 #dataDir = workDir + "Data/2015runs/"
 if TESTING:
-    ibRaw = dataDir + "ibTESTv04r00.csv" #Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
-    resultsDir = workDir + "Results/logTest/"  #  Location for final data
+    ibRaw = dataDir + "ibTESTv04r00.csv" 
+    resultsDir = workDir + "Results/Test/"  #  Location for test data
 else:
     h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-070119.txt" # HURDAT2 NE North Pacific Data
-    ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" #Allstorms.ibtracs_csc.v03r08.csv" # IBTrACS CSC v03R08
+    ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
 #    ibRaw = ""
     resultsDir = workDir + "Results/"  #  Location for final results
     
