@@ -59,7 +59,7 @@ import stormReportDownload # Local python module
 SCRAMBLE = True
 WEBMERC = True
 BREAK180 = True
-TESTING = True
+TESTING = False
 
 
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
@@ -855,7 +855,7 @@ segmentFields = [['SEGMNTOID','N','10'],
                  ['STORMID','C','58'],
                  ['MaxWindSpd','N','9'],
                  ['BeginObHr','C','9'],
-                 ['BeginLat','C','10'],
+                 ['BeginLat','C','10'],  # Why C?  Is that character? Need a float!
                  ['BeginLon','C','10'],
                  ['Min_Press','C','10'],
                  ['Basin','C','10'],
@@ -869,8 +869,8 @@ segmentFields = [['SEGMNTOID','N','10'],
                  ['Segment_ID','C','12'],#End of previous attributes
                  ['Nature','C','20'],
                  ['ENSO','C','20'],
-                 ['EndLat','N','20'],
-                 ['EndLon','N','20']]
+                 ['EndLat','C','20'],
+                 ['EndLon','C','20']]
 
 """ Create and initalize the fields for the needed Tracks Shapefiles """
 goodSegments = shapefile.Writer(goodSegmentFileName) #, shapeType = 3) # New shapefile
