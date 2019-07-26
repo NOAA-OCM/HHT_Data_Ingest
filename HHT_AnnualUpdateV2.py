@@ -59,8 +59,8 @@ import stormReportDownload # Local python module
 SCRAMBLE = True
 WEBMERC = True
 BREAK180 = True
-TESTING = False
-
+OMIT_PROVISIONAL = True
+TESTING = True
 
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
@@ -82,7 +82,7 @@ if TESTING:
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
 #    ibRaw = dataDir + "ibTESTv04r00.csv"
-    resultsDir = workDir + "Results/Test/"  #  Location for test data
+    resultsDir = workDir + "Results/Test/NoProvisional/"  #  Location for test data
 else:
     h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
@@ -368,7 +368,10 @@ for i, file in enumerate(ibFiles):
          lineVals = rawObsFile.readline() # First Storm record in IBTrACS
          vals = lineVals.split(",")
          print(vals)
-         exit
+         """ Check that new storm track is not a provisional track """
+         if OMIT_PROVISIONAL:
+             if(vals[13] == 'PROVISIONAL'):
+                 continue
          """ The vals used has changed with V04r00.  See pdf documentationon
          IBTrACS website for all the possibilites.  We will be using the 'USA'
          values that should be similar to what was previously provided as a
@@ -438,8 +441,12 @@ for i, file in enumerate(ibFiles):
     #                        " has ", thisStorm.numSegs," observations \n    which ",
     #                        "should be ", nseg)
     #==============================================================================
-
-                     """ Create a new storm record for the newly read storm """
+                     """ Check that new storm track is not a provisional track """
+                     if OMIT_PROVISIONAL:
+                         if(vals[13] == 'PROVISIONAL'):
+                             continue
+                     """ Not a provisional storm, so 
+                         Create a new storm record for the newly read storm """
                      thisStorm = Storm(vals[0],          # Unique IBTrACS ID
                                        vals[5].strip())  # Name, spaces removed
                      """ Add the first segment information to the storm """
