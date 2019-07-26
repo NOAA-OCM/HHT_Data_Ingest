@@ -75,15 +75,17 @@ use_HURDAT = True
 dupRange = 5
 
 """---------- DEFINE WORKING DIRECTORIES AND FILE NAMES --------------------"""
-workDir = "C:/GIS/Hurricanes/HHT/2018_Season/" # On OCM Work Laptop
-#workDir = "K:/GIS/Hurricanes/HHT/2018_Season/" # On Home Desktop
+workDir = "K:/GIS/Hurricanes/HHT/2018_Season/" # C: at work, K: at home
 dataDir = workDir + "Data/"  # Data location
 if TESTING:
-    ibRaw = dataDir + "ibTESTv04r00.csv"
+    h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
+    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
+    ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
+#    ibRaw = dataDir + "ibTESTv04r00.csv"
     resultsDir = workDir + "Results/Test/"  #  Location for test data
 else:
     h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
-    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-070119.txt" # HURDAT2 NE North Pacific Data
+    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
 #    ibRaw = ""
     resultsDir = workDir + "Results/"  #  Location for final results
@@ -326,8 +328,8 @@ class Observation(object):
 class Segment(Observation):
     def __init__(self,time,lat,lon,wsp,pres,nature):
         super().__init__(time,lat,lon,wsp,pres,nature)
-        self.endLat = float(0.)
-        self.endLon = float(0.)
+        self.endLat = float(lat)# Test change flot 0 to float9lat/lon) to make non-int.
+        self.endLon = float(lon)
         self.saffir = ""
         self.enso = None
 
@@ -377,10 +379,10 @@ for i, file in enumerate(ibFiles):
                            vals[5].strip())  # Name, spaces removed
     #     observation = Segment(vals[6],  # ISO 8601 Time
          observation = Segment(vals[6],  # ISO 8601 Time
-                               vals[8],  # Lat
-                               vals[9],  # Lon
-                               vals[10], # Wind speed Was [10]
-                               vals[11], # Pressure
+                               vals[8],  # USA_Lat
+                               vals[9],  # USA_Lon
+                               vals[23], # USA_Wind speed Was [10]
+                               vals[24], # USA_Pressure
                                vals[7] ) # Nature
          thisStorm.segs.append(observation)
          thisStorm.startTime = observation.time
@@ -403,10 +405,10 @@ for i, file in enumerate(ibFiles):
                  vals = lineVals.split(",")
                  if vals[0] == thisStorm.uid :  # Same storm so add the record
                      observation = Segment(vals[6],  # ISO 8601 Time
-                                           vals[8],  # Lat
-                                           vals[9],  # Lon
-                                           vals[10], # Wind speed
-                                           vals[11], # Pressure
+                                           vals[8],  # USA_Lat
+                                           vals[9],  # USA_Lon
+                                           vals[23], # USA_Wind speed Was [10]
+                                           vals[24], # USA_Pressure
                                            vals[7] ) # Nature
                      ibHour = observation.time.hour*100+observation.time.minute
                      if NO391521 and (ibHour == 300 or ibHour == 900 or
@@ -442,10 +444,10 @@ for i, file in enumerate(ibFiles):
                                        vals[5].strip())  # Name, spaces removed
                      """ Add the first segment information to the storm """
                      observation = Segment(vals[6],  # ISO 8601 Time
-                                           vals[8],  # Lat
-                                           vals[9],  # Lon
-                                           vals[10], # Wind speed
-                                           vals[11], # Pressure
+                                           vals[8],  # USA_Lat
+                                           vals[9],  # USA_Lon
+                                           vals[23], # USA_Wind speed Was [10]
+                                           vals[24], # USA_Pressure
                                            vals[7] ) # Nature
                      thisStorm.segs.append(observation)
                      thisStorm.startTime = observation.time
