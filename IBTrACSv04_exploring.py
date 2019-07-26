@@ -22,8 +22,13 @@ dataDir = workDir + "Data/"  # Data location
 
 ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv"
 ibdf = pd.read_csv(dataDir + "ibtracs.ALL.list.v04r00.csv")
+#ibRaw = dataDir + "ibTESTv04r00.csv"
+#ibdf = pd.read_csv(dataDir + "ibTESTv04r00.csv")
 print(ibdf.head(10))
 print(ibdf.info())
+
+sanddf = ibdf.loc[(ibdf['SEASON'] == 2015) & (ibdf['BASIN'] == NA)]
+print(sanddf)
 
 ibUSA = ibdf.filter(regex=r'USA')
 ibUSA.head(3)

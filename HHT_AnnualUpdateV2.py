@@ -30,7 +30,7 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
          2019-07-15: Updating for 2018 storms, need to read in IBTrACS V04.
                      Change columns for IBTrACSV0400, clean up old comments DLE
          2019-07-24: Fixed for pyshp 2.1.0, which had very different calls, etc.
-                     than previous version used.  This version appears to be 
+                     than previous version used.  This version appears to be
                      supported by Anaconda. DLE
 
 """
@@ -75,12 +75,11 @@ use_HURDAT = True
 dupRange = 5
 
 """---------- DEFINE WORKING DIRECTORIES AND FILE NAMES --------------------"""
-#workDir = "C:/GIS/Hurricanes/HHT/2018_Season/" # On OCM Work Laptop
-workDir = "K:/GIS/Hurricanes/HHT/2018_Season/" # On Home Desktop
+workDir = "C:/GIS/Hurricanes/HHT/2018_Season/" # On OCM Work Laptop
+#workDir = "K:/GIS/Hurricanes/HHT/2018_Season/" # On Home Desktop
 dataDir = workDir + "Data/"  # Data location
-#dataDir = workDir + "Data/2015runs/"
 if TESTING:
-    ibRaw = dataDir + "ibTESTv04r00.csv" 
+    ibRaw = dataDir + "ibTESTv04r00.csv"
     resultsDir = workDir + "Results/Test/"  #  Location for test data
 else:
     h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
@@ -88,7 +87,7 @@ else:
     ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
 #    ibRaw = ""
     resultsDir = workDir + "Results/"  #  Location for final results
-    
+
 
 """ Create the needed Results directory if it doesn't exist """
 os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
@@ -101,9 +100,7 @@ logFile = open(logFileName,'w')
     (ONLY USED FOR TESTING IBTrACS SPECIFIC CODE) """
 hFiles = [h2AtlRaw, h2nepacRaw]
 hBasin = ["NA","EP"]
-#hFiles = [h2AtlRaw]
-#hBasin = ["NA"]
-hFiles = []
+#hFiles = []
 
 """ Define output shapefile names """
 if WEBMERC:
@@ -370,11 +367,11 @@ for i, file in enumerate(ibFiles):
          vals = lineVals.split(",")
          print(vals)
          exit
-         """ The vals used has changed with V04r00.  See pdf documentationon 
+         """ The vals used has changed with V04r00.  See pdf documentationon
          IBTrACS website for all the possibilites.  We will be using the 'USA'
          values that should be similar to what was previously provided as a
          'CSC' version of the IBTrACSv03 data. """
-         
+
          """ Create first storm """
          thisStorm = Storm(vals[0],          # Unique IBTrACS ID
                            vals[5].strip())  # Name, spaces removed
@@ -1118,7 +1115,7 @@ for i, storm in enumerate(allStorms):
     """ Append track to appropriate stormTracks list """
     if goodStorm:
         numGoodObs += 1
-        goodTracks.poly(trackCoords ) # Add the shape
+        goodTracks.line(trackCoords ) # Add the shape
         goodTracks.record(stormOID,     # Storm Object ID,
                        storm.uid,       # StormID
                        storm.maxW,      # Max Sustained WInd, 1 min ave period
@@ -1140,7 +1137,7 @@ for i, storm in enumerate(allStorms):
                        storm.enso)      # ENSO Flag
     else:
         numAllMissing += 1
-        missingTracks.poly(trackCoords ) # Add the shape
+        missingTracks.line(trackCoords ) # Add the shape
         missingTracks.record(stormOID,     # Storm Object ID,
                        storm.uid,       # StormID
                        storm.maxW,      # Max Sustained WInd, 1 min ave period
@@ -1176,12 +1173,12 @@ if (SCRAMBLE):
     random.shuffle(missingSegIndx)
 for i in goodSegIndx:
     tmp = goodSegCoords[i]
-    goodSegments.poly(goodSegCoords[i])
+    goodSegments.line(goodSegCoords[i])
     goodSegments.record(*goodSegParams[i])
 
 for i in missingSegIndx:
     tmp = missingSegCoords[i]
-    missingSegments.poly(missingSegCoords[i])
+    missingSegments.line(missingSegCoords[i])
     missingSegments.record(*missingSegParams[i])
 
 
