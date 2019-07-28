@@ -60,7 +60,7 @@ SCRAMBLE = True
 WEBMERC = True
 BREAK180 = True
 OMIT_PROVISIONAL = True
-TESTING = True
+TESTING = False
 
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
@@ -82,7 +82,7 @@ if TESTING:
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
 #    ibRaw = dataDir + "ibTESTv04r00.csv"
-    resultsDir = workDir + "Results/Test/NoProvisional/"  #  Location for test data
+    resultsDir = workDir + "Results/Test/WithHURDAT"  #  Location for test data
 else:
     h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
@@ -336,6 +336,8 @@ class Segment(Observation):
 """ Create an empty list to hold allStorms
     and initialize the total storm counter """
 allStorms = []
+provisionalStorms = []
+ibProvisional = 0
 #numStorms = -1
 numAllMissing = 0
 numSinglePoint = 0
@@ -367,23 +369,19 @@ for i, file in enumerate(ibFiles):
          """ Read first IBTrACS Record """
          lineVals = rawObsFile.readline() # First Storm record in IBTrACS
          vals = lineVals.split(",")
-         print(vals)
-         """ Check that new storm track is not a provisional track """
-         if OMIT_PROVISIONAL:
-             if(vals[13] == 'PROVISIONAL'):
-                 continue
          """ The vals used has changed with V04r00.  See pdf documentationon
          IBTrACS website for all the possibilites.  We will be using the 'USA'
-         values that should be similar to what was previously provided as a
-         'CSC' version of the IBTrACSv03 data. """
+         values for winds and pressure that should be similar to what was 
+         previously provided as a 'CSC' version of the IBTrACSv03 data. """
+         print(vals)
 
          """ Create first storm """
          thisStorm = Storm(vals[0],          # Unique IBTrACS ID
                            vals[5].strip())  # Name, spaces removed
     #     observation = Segment(vals[6],  # ISO 8601 Time
          observation = Segment(vals[6],  # ISO 8601 Time
-                               vals[8],  # USA_Lat
-                               vals[9],  # USA_Lon
+                               vals[8], # Lat
+                               vals[8], # Lon
                                vals[23], # USA_Wind speed Was [10]
                                vals[24], # USA_Pressure
                                vals[7] ) # Nature
@@ -408,8 +406,8 @@ for i, file in enumerate(ibFiles):
                  vals = lineVals.split(",")
                  if vals[0] == thisStorm.uid :  # Same storm so add the record
                      observation = Segment(vals[6],  # ISO 8601 Time
-                                           vals[8],  # USA_Lat
-                                           vals[9],  # USA_Lon
+                                           vals[8], # Lat
+                                           vals[9], # Lon
                                            vals[23], # USA_Wind speed Was [10]
                                            vals[24], # USA_Pressure
                                            vals[7] ) # Nature
@@ -423,36 +421,38 @@ for i, file in enumerate(ibFiles):
                          nseg += 1
                  else: #Found a new storm so...
                      thisStorm.numSegs = len(thisStorm.segs)
-    #                 allStorms.append(thisStorm) # Add old storm to allStorms
-                     """ Only keep the storm if there is more than ONE observation: """
-                     if(thisStorm.numSegs > 1):
-                         # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
-                         if(thisStorm.basin[0:2] != "NA" and thisStorm.basin[0:2] != "EP"):
-                             allStorms.append(thisStorm) # Add old storm to allStorms
-    #                         print("IBTrACS basin",thisStorm.basin)
-                         else:
-                             ibSkipNum += 1
-    #                         print("Duplicate in basin",thisStorm.basin)
+                     """ Check if we are keeping provisional storms and
+                         save storm appropriately """
+                     if (OMIT_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
+                         # Add old storm to provisionalStorms
+                         ibProvisional += 1                           
+                         print('Provisional storm ', ibProvisional)
+                         provisionalStorms.append(thisStorm) 
                      else:
-                         numSinglePoint += 1
-                     ibNum += 1 # Increment counter for IBTrACS storms
+                         """ Only keep the storm if there is more than ONE observation: """
+                         if(thisStorm.numSegs > 1):
+                             # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
+                             if(thisStorm.basin[0:2] != "NA" and thisStorm.basin[0:2] != "EP"):
+                                 allStorms.append(thisStorm) # Add old storm to allStorms
+        #                         print("IBTrACS basin",thisStorm.basin)
+                             else:
+                                 ibSkipNum += 1
+        #                         print("Duplicate in basin",thisStorm.basin)
+                         else:
+                             numSinglePoint += 1
+                         ibNum += 1 # Increment counter for IBTrACS storms
     #==============================================================================
     #                  print("IBTrACS storm # ",ibNum," named ",thisStorm.name,
     #                        " has ", thisStorm.numSegs," observations \n    which ",
     #                        "should be ", nseg)
     #==============================================================================
-                     """ Check that new storm track is not a provisional track """
-                     if OMIT_PROVISIONAL:
-                         if(vals[13] == 'PROVISIONAL'):
-                             continue
-                     """ Not a provisional storm, so 
-                         Create a new storm record for the newly read storm """
+                     """ Create a new storm record for the newly read storm """
                      thisStorm = Storm(vals[0],          # Unique IBTrACS ID
                                        vals[5].strip())  # Name, spaces removed
                      """ Add the first segment information to the storm """
                      observation = Segment(vals[6],  # ISO 8601 Time
-                                           vals[8],  # USA_Lat
-                                           vals[9],  # USA_Lon
+                                           vals[8], # Lat
+                                           vals[9], # Lon
                                            vals[23], # USA_Wind speed Was [10]
                                            vals[24], # USA_Pressure
                                            vals[7] ) # Nature
@@ -470,18 +470,21 @@ for i, file in enumerate(ibFiles):
          """ EOF found on IBTrACS: Write last data and close out """
          thisStorm.numSegs = len(thisStorm.segs)
          """ Only keep the storm if there is more than ONE observation: """
-         if(thisStorm.numSegs > 1):
-             # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
-             if(thisStorm.basin[0:2] != "NA" and thisStorm.basin[0:2] != "EP"):
-                 allStorms.append(thisStorm) # Add old storm to allStorms
-    #             print("IBTrACS basin",thisStorm.basin)
-             else:
-                 ibSkipNum += 1
-    #             print("Duplicate in basin",thisStorm.basin)
+         if (OMIT_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
+             # Add old storm to provisionalStorms
+             ibProvisional += 1                           
+             print('Provisional storm ', ibProvisional)
+             provisionalStorms.append(thisStorm) 
          else:
-             numSinglePoint += 1
-
-         ibNum += 1 # Increment counter for IBTrACS storms
+             if(thisStorm.numSegs > 1):
+                 # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
+                 if(thisStorm.basin[0:2] != "NA" and thisStorm.basin[0:2] != "EP"):
+                     allStorms.append(thisStorm) # Add old storm to allStorms
+                 else:
+                     ibSkipNum += 1
+             else:
+                 numSinglePoint += 1   
+             ibNum += 1 # Increment counter for IBTrACS storms
     #==============================================================================
     #      print("Last IBTrACS storm # ",ibNum," named ",thisStorm.name,
     #            " has ", thisStorm.numSegs," observations \n    which ",

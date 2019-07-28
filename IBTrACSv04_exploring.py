@@ -26,7 +26,7 @@ ibdf = pd.read_csv(dataDir + "ibtracs.ALL.list.v04r00.csv", na_filter = False)
 #ibdf = pd.read_csv(dataDir + "ibTESTv04r00.csv", na_filter = False)
 print(ibdf.head(10))
 print(ibdf.info)
-ibdf.TRACK_TYPE.unique()
+ibdf.LAT.unique()
 
 smalldf = ibdf.loc[(ibdf['SEASON'] == 2015) & (ibdf['BASIN'] != 'NA') & (ibdf['BASIN'] != 'EP')]
 print(smalldf.head(10))
