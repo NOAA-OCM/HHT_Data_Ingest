@@ -60,7 +60,7 @@ SCRAMBLE = True
 WEBMERC = True
 BREAK180 = True
 OMIT_PROVISIONAL = True
-TESTING = False
+TESTING = True
 
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
@@ -82,7 +82,8 @@ if TESTING:
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
 #    ibRaw = dataDir + "ibTESTv04r00.csv"
-    resultsDir = workDir + "Results/Test/WithHURDAT"  #  Location for test data
+    # Location & prefix w/out trailing '/' for test data
+    resultsDir = workDir + "Results/Test/WithHURDAT"  
 else:
     h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
