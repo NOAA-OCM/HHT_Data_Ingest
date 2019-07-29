@@ -60,7 +60,7 @@ SCRAMBLE = True
 WEBMERC = True
 BREAK180 = True
 OMIT_PROVISIONAL = True
-TESTING = True
+TESTING = False
 
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
@@ -75,7 +75,7 @@ use_HURDAT = True
 dupRange = 5
 
 """---------- DEFINE WORKING DIRECTORIES AND FILE NAMES --------------------"""
-workDir = "K:/GIS/Hurricanes/HHT/2018_Season/" # C: at work, K: at home
+workDir = "C:/GIS/Hurricanes/HHT/2018_Season/" # C: at work, K: at home
 dataDir = workDir + "Data/"  # Data location
 if TESTING:
     h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
@@ -83,7 +83,7 @@ if TESTING:
     ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
 #    ibRaw = dataDir + "ibTESTv04r00.csv"
     # Location & prefix w/out trailing '/' for test data
-    resultsDir = workDir + "Results/Test/WithHURDAT"  
+    resultsDir = workDir + "Results/Test/"  
 else:
     h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
@@ -99,11 +99,15 @@ os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
 logFileName = resultsDir + "ingest.log"
 logFile = open(logFileName,'w')
 
-""" Specify what HURDAT years to run.  If hFIles is empty, then skip HURDAT
-    (ONLY USED FOR TESTING IBTrACS SPECIFIC CODE) """
+""" Specify what HURDAT and IBTrACS files to run.  
+    If hFIles or ibFiles is empty, then skip those files.
+    This is typically only in testing the ingest of different file types """
 hFiles = [h2AtlRaw, h2nepacRaw]
 hBasin = ["NA","EP"]
 #hFiles = []
+""" Same, but for HURDAT2 testing """
+ibFiles = [ibRaw]
+ibFiles = []
 
 """ Define output shapefile names """
 if WEBMERC:
@@ -354,8 +358,7 @@ numGoodObs = 0
     We know the IBTrACS data starts with 3 header rows, then the 4th row
     is our first legitimate data record.
     Initialize the first thisStorm object from that"""
-ibFiles = [ibRaw]
-#ibFiles = []
+
 ibNum = 0 # Initialize IBTrACS storm counter,
           # it will increment when storm end is found
 ibSkipNum = 0  # Number of NA and EP storms skipped to prevent HURDAT2 duplicates
