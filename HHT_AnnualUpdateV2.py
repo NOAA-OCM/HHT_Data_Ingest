@@ -107,7 +107,7 @@ hBasin = ["NA","EP"]
 #hFiles = []
 """ Same, but for HURDAT2 testing """
 ibFiles = [ibRaw]
-ibFiles = []
+#ibFiles = []
 
 """ Define output shapefile names """
 if WEBMERC:
