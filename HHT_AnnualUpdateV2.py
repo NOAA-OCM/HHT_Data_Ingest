@@ -385,7 +385,7 @@ for i, file in enumerate(ibFiles):
     #     observation = Segment(vals[6],  # ISO 8601 Time
          observation = Segment(vals[6],  # ISO 8601 Time
                                vals[8], # Lat
-                               vals[8], # Lon
+                               vals[9], # Lon
                                vals[23], # USA_Wind speed Was [10]
                                vals[24], # USA_Pressure
                                vals[7] ) # Nature
