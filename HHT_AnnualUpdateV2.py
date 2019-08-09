@@ -76,7 +76,7 @@ use_HURDAT = True
 dupRange = 5
 
 """---------- DEFINE WORKING DIRECTORIES AND FILE NAMES --------------------"""
-workDir = "K:/GIS/Hurricanes/HHT/2018_Season/" # C: at work, K: at home
+workDir = "C:/GIS/Hurricanes/HHT/2018_Season/" # C: at work, K: at home
 dataDir = workDir + "Data/"  # Data location
 if TESTING:
     h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
@@ -84,7 +84,7 @@ if TESTING:
     ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
 #    ibRaw = dataDir + "ibTESTv04r00.csv"
     # Location & prefix w/out trailing '/' for test data
-    resultsDir = workDir + "Results/Test/WithHURDAT"  
+    resultsDir = workDir + "Results/Test/"
 else:
     h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
@@ -100,11 +100,15 @@ os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
 logFileName = resultsDir + "ingest.log"
 logFile = open(logFileName,'w')
 
-""" Specify what HURDAT years to run.  If hFIles is empty, then skip HURDAT
-    (ONLY USED FOR TESTING IBTrACS SPECIFIC CODE) """
+""" Specify what HURDAT and IBTrACS files to run.
+    If hFIles or ibFiles is empty, then skip those files.
+    This is typically only in testing the ingest of different file types """
 hFiles = [h2AtlRaw, h2nepacRaw]
 hBasin = ["NA","EP"]
 #hFiles = []
+""" Same, but for HURDAT2 testing """
+ibFiles = [ibRaw]
+#ibFiles = []
 
 """ Define output shapefile names """
 if WEBMERC:
@@ -355,8 +359,7 @@ numGoodObs = 0
     We know the IBTrACS data starts with 3 header rows, then the 4th row
     is our first legitimate data record.
     Initialize the first thisStorm object from that"""
-ibFiles = [ibRaw]
-#ibFiles = []
+
 ibNum = 0 # Initialize IBTrACS storm counter,
           # it will increment when storm end is found
 ibSkipNum = 0  # Number of NA and EP storms skipped to prevent HURDAT2 duplicates
@@ -373,7 +376,7 @@ for i, file in enumerate(ibFiles):
          vals = lineVals.split(",")
          """ The vals used has changed with V04r00.  See pdf documentationon
          IBTrACS website for all the possibilites.  We will be using the 'USA'
-         values for winds and pressure that should be similar to what was 
+         values for winds and pressure that should be similar to what was
          previously provided as a 'CSC' version of the IBTrACSv03 data. """
          print(vals)
 
@@ -383,7 +386,7 @@ for i, file in enumerate(ibFiles):
     #     observation = Segment(vals[6],  # ISO 8601 Time
          observation = Segment(vals[6],  # ISO 8601 Time
                                vals[8], # Lat
-                               vals[8], # Lon
+                               vals[9], # Lon
                                vals[23], # USA_Wind speed Was [10]
                                vals[24], # USA_Pressure
                                vals[7] ) # Nature
@@ -398,7 +401,7 @@ for i, file in enumerate(ibFiles):
          else:
              thisStorm.name = thisStorm.name + " " \
                  + thisStorm.startTime.strftime('%Y')
-             
+
          # enter end time in case this is only observation.
          thisStorm.endTime = observation.time
          print(thisStorm.startTime)
@@ -433,9 +436,9 @@ for i, file in enumerate(ibFiles):
                          save storm appropriately """
                      if (OMIT_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
                          # Add old storm to provisionalStorms
-                         ibProvisional += 1                           
+                         ibProvisional += 1
                          print('Provisional storm ', ibProvisional)
-                         provisionalStorms.append(thisStorm) 
+                         provisionalStorms.append(thisStorm)
                      else:
                          """ Only keep the storm if there is more than ONE observation: """
                          if(thisStorm.numSegs > 1):
@@ -485,9 +488,9 @@ for i, file in enumerate(ibFiles):
          """ Only keep the storm if there is more than ONE observation: """
          if (OMIT_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
              # Add old storm to provisionalStorms
-             ibProvisional += 1                           
+             ibProvisional += 1
              print('Provisional storm ', ibProvisional)
-             provisionalStorms.append(thisStorm) 
+             provisionalStorms.append(thisStorm)
          else:
              if(thisStorm.numSegs > 1):
                  # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
@@ -496,7 +499,7 @@ for i, file in enumerate(ibFiles):
                  else:
                      ibSkipNum += 1
              else:
-                 numSinglePoint += 1   
+                 numSinglePoint += 1
              ibNum += 1 # Increment counter for IBTrACS storms
     #==============================================================================
     #      print("Last IBTrACS storm # ",ibNum," named ",thisStorm.name,
