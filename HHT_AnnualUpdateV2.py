@@ -59,8 +59,9 @@ import stormReportDownload # Local python module
 SCRAMBLE = True
 WEBMERC = True
 BREAK180 = True
-OMIT_PROVISIONAL = True
-TESTING = True
+OMIT_PROVISIONAL = False
+LABEL_PROVISIONAL = True
+TESTING = False
 
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
@@ -89,7 +90,7 @@ else:
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
 #    ibRaw = ""
-    resultsDir = workDir + "Results/"  #  Location for final results
+    resultsDir = workDir + "Results/WithProvisional/"  #  Location for final results
 
 
 """ Create the needed Results directory if it doesn't exist """
@@ -390,8 +391,14 @@ for i, file in enumerate(ibFiles):
          thisStorm.startTime = observation.time
          thisStorm.startLon = observation.startLon
          thisStorm.startLat = observation.startLat
-         thisStorm.name = thisStorm.name + " " \
-             + thisStorm.startTime.strftime('%Y')
+         if(LABEL_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
+             thisStorm.name = thisStorm.name + " " \
+                 + thisStorm.startTime.strftime('%Y') \
+                 + "PROVISIONAL"
+         else:
+             thisStorm.name = thisStorm.name + " " \
+                 + thisStorm.startTime.strftime('%Y')
+             
          # enter end time in case this is only observation.
          thisStorm.endTime = observation.time
          print(thisStorm.startTime)
@@ -462,8 +469,13 @@ for i, file in enumerate(ibFiles):
                      thisStorm.startLon = observation.startLon
                      thisStorm.startLat = observation.startLat
                      # enter end time in case this is only observation.
-                     thisStorm.name = thisStorm.name + " " \
-                         + thisStorm.startTime.strftime('%Y')
+                     if(LABEL_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
+                         thisStorm.name = thisStorm.name + " " \
+                             + thisStorm.startTime.strftime('%Y') \
+                             + "PROVISIONAL"
+                     else:
+                         thisStorm.name = thisStorm.name + " " \
+                             + thisStorm.startTime.strftime('%Y')
                      thisStorm.endTime = observation.time
                      nseg = 1 # New storm ready for next record
                      thisStorm.source = 0 # Flag data source as IBTrACS
@@ -574,8 +586,13 @@ for i, file in enumerate(hFiles):
             thisStorm.startLon = thisStorm.segs[0].startLon
             thisStorm.startLat = thisStorm.segs[0].startLat
             #thisStorm.name = thisStorm.name +" "+ thisStorm.startTime[:4]
-            thisStorm.name = thisStorm.name + " " \
-                 + thisStorm.startTime.strftime('%Y')
+            if(LABEL_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
+                thisStorm.name = thisStorm.name + " " \
+                     + thisStorm.startTime.strftime('%Y') \
+                     + "PROVISIONAL"
+            else:
+                thisStorm.name = thisStorm.name + " " \
+                     + thisStorm.startTime.strftime('%Y')
             thisStorm.endTime = thisStorm.segs[len(thisStorm.segs)-1].time
             """ Only keep the storm if there is more than ONE observation: """
             if(thisStorm.numSegs != len(thisStorm.segs)):
