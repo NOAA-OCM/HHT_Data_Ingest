@@ -397,7 +397,7 @@ for i, file in enumerate(ibFiles):
          if(LABEL_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
              thisStorm.name = thisStorm.name + " " \
                  + thisStorm.startTime.strftime('%Y') \
-                 + "PROVISIONAL"
+                 + "(P)"
          else:
              thisStorm.name = thisStorm.name + " " \
                  + thisStorm.startTime.strftime('%Y')
@@ -475,7 +475,7 @@ for i, file in enumerate(ibFiles):
                      if(LABEL_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
                          thisStorm.name = thisStorm.name + " " \
                              + thisStorm.startTime.strftime('%Y') \
-                             + "PROVISIONAL"
+                             + "(P)"
                      else:
                          thisStorm.name = thisStorm.name + " " \
                              + thisStorm.startTime.strftime('%Y')
@@ -592,7 +592,7 @@ for i, file in enumerate(hFiles):
             if(LABEL_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
                 thisStorm.name = thisStorm.name + " " \
                      + thisStorm.startTime.strftime('%Y') \
-                     + "PROVISIONAL"
+                     + "(P)"
             else:
                 thisStorm.name = thisStorm.name + " " \
                      + thisStorm.startTime.strftime('%Y')
