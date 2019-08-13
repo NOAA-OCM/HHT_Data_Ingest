@@ -82,15 +82,17 @@ if TESTING:
     h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
-#    ibRaw = dataDir + "ibTESTv04r00.csv"
+    crosswalkFile = dataDir + \
+        'IBTrACS_SerialNumber_NameMapping_v04r00_20190421.txt'
     # Location & prefix w/out trailing '/' for test data
     resultsDir = workDir + "Results/Test/"
 else:
     h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
-#    ibRaw = ""
-    resultsDir = workDir + "Results/WithProvisional/"  #  Location for final results
+    crosswalkFile = dataDir + \
+        'IBTrACS_SerialNumber_NameMapping_v04r00_20190421.txt'
+    resultsDir = workDir + "Results/forProd08132019/"  #  Location for final results
 
 
 """ Create the needed Results directory if it doesn't exist """
@@ -195,6 +197,32 @@ Missing=[None, None]
 #         print(' %4s ' % (ensoLookup[year+'-'+month]),end='')
 # print('\n\n')
 #==============================================================================
+
+""" Get Crosswalk table to use to replace HURDAT2 filenames with IBTrACS
+    names to construct links for Storm Data Pages frum 
+    http://ibtracs.unca.edu/index.php?name=...
+"""
+detailsBaseURL = "http://ibtracs.unca.edu/index.php?name=v04r00-"
+ibName = {}
+with open(crosswalkFile, 'r') as cwFile:
+     while True: # With this and the below break, read to EOF
+         lineVals = cwFile.readline()
+         if not lineVals: # Finds EOF
+             break # Break on EOF
+         else: # Data read: Parse it and test to see if it is a new storm
+             vals = lineVals.split()
+             if "multiple" in lineVals:
+                 """ When storms are in multiple basins, use the ATCF IDs,
+                 NOTE BENE: there can be more than one! """
+                 atcfID = [s for s in vals if "atcf" in s]
+                 for thisID in (atcfID):
+                     thisKey = thisID[:-6]
+                     ibName[thisKey] = vals[0]
+             elif "hurdat" in lineVals:
+                 ibName[vals[1]] = vals[0]
+#                 print(vals, "\n ibName[",vals[1],"] is ", vals[0],"\n",
+#                       ibName[vals[1]])#    
+
 """ Processing functions """
 #"""--------------------------------------------------------------------"""
 #def getStormReport(name,year):
@@ -339,6 +367,10 @@ class Segment(Observation):
         self.saffir = ""
         self.enso = None
 
+
+""" Main processing begins here   """
+
+
 """ Create an empty list to hold allStorms
     and initialize the total storm counter """
 allStorms = []
@@ -398,6 +430,7 @@ for i, file in enumerate(ibFiles):
              thisStorm.name = thisStorm.name + " " \
                  + thisStorm.startTime.strftime('%Y') \
                  + "(P)"
+             print("Labeling as provisional: ", thisStorm.name )
          else:
              thisStorm.name = thisStorm.name + " " \
                  + thisStorm.startTime.strftime('%Y')
@@ -476,6 +509,7 @@ for i, file in enumerate(ibFiles):
                          thisStorm.name = thisStorm.name + " " \
                              + thisStorm.startTime.strftime('%Y') \
                              + "(P)"
+                         print("Labeling as provisional: ", thisStorm.name )
                      else:
                          thisStorm.name = thisStorm.name + " " \
                              + thisStorm.startTime.strftime('%Y')
@@ -537,6 +571,16 @@ for i, file in enumerate(hFiles):
             #print ("vals = ",vals[0],vals[1],vals[2], len(vals))
             thisStorm = Storm(vals[0],  # Create new storm using Unique ID
                               vals[1].strip())  # and Name w/out spaces
+            """ If this storm has an IBTrACS ID, use it instead.
+            NOTE BENE: The IBTrACS crosswalk file prepends a "b" on to the 
+            HURDAT2 (and other) id values.  Therefore, we need to prepend that 
+            in the test below. """
+            testUID = 'b'+thisStorm.uid.lower()
+            if (testUID) in ibName:
+#                print('Swapping IDs! HURDAT ID, ',thisStorm.uid,
+#                      ', IBTrACS ID, ', ibName[testUID])
+                thisStorm.uid = ibName[testUID]
+
             thisStorm.numSegs =  int(vals[2])    # Number of Observations
             thisStorm.source = i + 1 # Flag data source as HURDAT ATL or NEPAC
             thisStorm.basin = hBasin[i]
@@ -593,6 +637,7 @@ for i, file in enumerate(hFiles):
                 thisStorm.name = thisStorm.name + " " \
                      + thisStorm.startTime.strftime('%Y') \
                      + "(P)"
+                print("Labeling as provisional: ", thisStorm.name )
             else:
                 thisStorm.name = thisStorm.name + " " \
                      + thisStorm.startTime.strftime('%Y')
@@ -864,6 +909,7 @@ stormFields = [['STRMTRKOID','N','10'],
                ['Min_Press','N','10'],
                ['StrmRptURL','C','254'],
                ['In10sOrder','N','10'], # End of Previous Attributes
+               ['DetailsURL','C','254'],
                ['NumObs','C','10'],
                ['ENSO','C','10']]
 #==============================================================================
@@ -1114,6 +1160,7 @@ for i, storm in enumerate(allStorms):
     """ Extra values to match old (pre-2015) database structure """
 #    basin = rptLookup.setdefault(storm.name,Missing)[1]
     rptURL = rptLookup.setdefault(storm.name,Missing)[0]
+    detailsURL = detailsBaseURL + storm.uid
     strmStart = storm.segs[0].time
     strmEnd = storm.segs[len(storm.segs)-1].time
 
@@ -1166,6 +1213,7 @@ for i, storm in enumerate(allStorms):
                        rptURL,          # Storm Report URL
                        intensOrder,        # Intensity Order (numeric)
                        # Extra Attributes below
+                       detailsURL,          # Storm Report URL
                        storm.numSegs,   # Number of segments in this Track
                        storm.enso)      # ENSO Flag
     else:
@@ -1188,6 +1236,7 @@ for i, storm in enumerate(allStorms):
                        rptURL,          # Storm Report URL
                        intensOrder,        # Intensity Order (numeric)
                        # Extra Attributes below
+                       detailsURL,          # Storm Report URL
                        storm.numSegs,   # Number of segments in this Track
                        storm.enso)      # ENSO Flag
     """ Append the names and the begin and end years to lists so that
