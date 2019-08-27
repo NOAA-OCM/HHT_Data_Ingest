@@ -32,7 +32,8 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
          2019-07-24: Fixed for pyshp 2.1.0, which had very different calls, etc.
                      than previous version used.  This version appears to be
                      supported by Anaconda. DLE
-
+         2019-08-27: Temp. changes to rerun 2017 data. Some storms not showing
+                     up with 2018 updates in spatial search.
 """
 
 import os
@@ -60,8 +61,8 @@ SCRAMBLE = True
 WEBMERC = True
 BREAK180 = True
 OMIT_PROVISIONAL = False
-LABEL_PROVISIONAL = True
-TESTING = False
+LABEL_PROVISIONAL = False
+TESTING = True
 
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
@@ -77,15 +78,19 @@ dupRange = 5
 
 """---------- DEFINE WORKING DIRECTORIES AND FILE NAMES --------------------"""
 workDir = "C:/GIS/Hurricanes/HHT/2018_Season/" # C: at work, K: at home
+workDir = "C:/GIS/Hurricanes/HHT/2017_Season/" # Checking functionality
 dataDir = workDir + "Data/"  # Data location
 if TESTING:
-    h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
-    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
-    ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
-    crosswalkFile = dataDir + \
+#    h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
+#    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
+#    ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
+    h2AtlRaw = dataDir + "hurdat2-1851-2017-050118.txt"     # HURDAT2 North Atlantic Data
+    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2017-050418.txt" # HURDAT2 NE North Pacific Data
+    ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r10.csv" # 2018 storm data
+    crosswalkFile = "C:/GIS/Hurricanes/HHT/2018_Season/Data/" \
         'IBTrACS_SerialNumber_NameMapping_v04r00_20190421.txt'
     # Location & prefix w/out trailing '/' for test data
-    resultsDir = workDir + "Results/Test/"
+    resultsDir = workDir + "Results/Test/2017_"
 else:
     h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
@@ -419,8 +424,10 @@ for i, file in enumerate(ibFiles):
          observation = Segment(vals[6],  # ISO 8601 Time
                                vals[8], # Lat
                                vals[9], # Lon
-                               vals[23], # USA_Wind speed Was [10]
-                               vals[24], # USA_Pressure
+#                               vals[23], # USA_Wind speed Was [10]
+#                               vals[24], # USA_Pressure
+                               vals[10], # USA_Wind speed Was [10]
+                               vals[11], # USA_Pressure
                                vals[7] ) # Nature
          thisStorm.segs.append(observation)
          thisStorm.startTime = observation.time
@@ -452,8 +459,10 @@ for i, file in enumerate(ibFiles):
                      observation = Segment(vals[6],  # ISO 8601 Time
                                            vals[8], # Lat
                                            vals[9], # Lon
-                                           vals[23], # USA_Wind speed Was [10]
-                                           vals[24], # USA_Pressure
+#                                           vals[23], # USA_Wind speed Was [10]
+#                                           vals[24], # USA_Pressure
+                                           vals[10], # USA_Wind speed Was [10]
+                                           vals[11], # USA_Pressure
                                            vals[7] ) # Nature
                      ibHour = observation.time.hour*100+observation.time.minute
                      if NO391521 and (ibHour == 300 or ibHour == 900 or
@@ -497,8 +506,10 @@ for i, file in enumerate(ibFiles):
                      observation = Segment(vals[6],  # ISO 8601 Time
                                            vals[8], # Lat
                                            vals[9], # Lon
-                                           vals[23], # USA_Wind speed Was [10]
-                                           vals[24], # USA_Pressure
+#                                           vals[23], # USA_Wind speed Was [10]
+#                                           vals[24], # USA_Pressure
+                                           vals[10], # USA_Wind speed Was [10]
+                                           vals[11], # USA_Pressure
                                            vals[7] ) # Nature
                      thisStorm.segs.append(observation)
                      thisStorm.startTime = observation.time
