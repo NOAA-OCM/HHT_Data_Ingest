@@ -92,7 +92,7 @@ else:
     ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
     crosswalkFile = dataDir + \
         'IBTrACS_SerialNumber_NameMapping_v04r00_20190421.txt'
-    resultsDir = workDir + "Results/forProd08132019/"  #  Location for final results
+    resultsDir = workDir + "Results/missingJSON/"  #  Location for final results
 
 
 """ Create the needed Results directory if it doesn't exist """
