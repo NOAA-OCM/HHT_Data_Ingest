@@ -61,8 +61,8 @@ SCRAMBLE = True
 WEBMERC = True
 BREAK180 = True
 OMIT_PROVISIONAL = False
-LABEL_PROVISIONAL = False
-TESTING = True
+LABEL_PROVISIONAL = True
+TESTING = False
 
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
@@ -78,7 +78,7 @@ dupRange = 5
 
 """---------- DEFINE WORKING DIRECTORIES AND FILE NAMES --------------------"""
 workDir = "C:/GIS/Hurricanes/HHT/2018_Season/" # C: at work, K: at home
-workDir = "C:/GIS/Hurricanes/HHT/2017_Season/" # Checking functionality
+#workDir = "C:/GIS/Hurricanes/HHT/2017_Season/" # Checking functionality
 dataDir = workDir + "Data/"  # Data location
 if TESTING:
 #    h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
@@ -97,7 +97,7 @@ else:
     ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
     crosswalkFile = dataDir + \
         'IBTrACS_SerialNumber_NameMapping_v04r00_20190421.txt'
-    resultsDir = workDir + "Results/missingJSON/"  #  Location for final results
+    resultsDir = workDir + "Results/NameTest/dle_"  #  Location for final results
 
 
 """ Create the needed Results directory if it doesn't exist """
@@ -222,9 +222,9 @@ with open(crosswalkFile, 'r') as cwFile:
                  atcfID = [s for s in vals if "atcf" in s]
                  for thisID in (atcfID):
                      thisKey = thisID[:-6]
-                     ibName[thisKey] = vals[0]
+                     ibName[thisKey] = vals[0].strip()
              elif "hurdat" in lineVals:
-                 ibName[vals[1]] = vals[0]
+                 ibName[vals[1]] = vals[0].strip()
 #                 print(vals, "\n ibName[",vals[1],"] is ", vals[0],"\n",
 #                       ibName[vals[1]])#    
 
@@ -424,10 +424,10 @@ for i, file in enumerate(ibFiles):
          observation = Segment(vals[6],  # ISO 8601 Time
                                vals[8], # Lat
                                vals[9], # Lon
-#                               vals[23], # USA_Wind speed Was [10]
-#                               vals[24], # USA_Pressure
-                               vals[10], # USA_Wind speed Was [10]
-                               vals[11], # USA_Pressure
+                               vals[23], # USA_Wind speed Was [10]
+                               vals[24], # USA_Pressure
+#                               vals[10], # USA_Wind speed Was [10]
+#                               vals[11], # USA_Pressure
                                vals[7] ) # Nature
          thisStorm.segs.append(observation)
          thisStorm.startTime = observation.time
@@ -459,10 +459,10 @@ for i, file in enumerate(ibFiles):
                      observation = Segment(vals[6],  # ISO 8601 Time
                                            vals[8], # Lat
                                            vals[9], # Lon
-#                                           vals[23], # USA_Wind speed Was [10]
-#                                           vals[24], # USA_Pressure
-                                           vals[10], # USA_Wind speed Was [10]
-                                           vals[11], # USA_Pressure
+                                           vals[23], # USA_Wind speed Was [10]
+                                           vals[24], # USA_Pressure
+#                                           vals[10], # USA_Wind speed Was [10]
+#                                           vals[11], # USA_Pressure
                                            vals[7] ) # Nature
                      ibHour = observation.time.hour*100+observation.time.minute
                      if NO391521 and (ibHour == 300 or ibHour == 900 or
@@ -506,10 +506,10 @@ for i, file in enumerate(ibFiles):
                      observation = Segment(vals[6],  # ISO 8601 Time
                                            vals[8], # Lat
                                            vals[9], # Lon
-#                                           vals[23], # USA_Wind speed Was [10]
-#                                           vals[24], # USA_Pressure
-                                           vals[10], # USA_Wind speed Was [10]
-                                           vals[11], # USA_Pressure
+                                           vals[23], # USA_Wind speed Was [10]
+                                           vals[24], # USA_Pressure
+#                                           vals[10], # USA_Wind speed Was [10]
+#                                           vals[11], # USA_Pressure
                                            vals[7] ) # Nature
                      thisStorm.segs.append(observation)
                      thisStorm.startTime = observation.time
@@ -590,7 +590,7 @@ for i, file in enumerate(hFiles):
             if (testUID) in ibName:
 #                print('Swapping IDs! HURDAT ID, ',thisStorm.uid,
 #                      ', IBTrACS ID, ', ibName[testUID])
-                thisStorm.uid = ibName[testUID]
+                thisStorm.uid = ibName[testUID].strip()
 
             thisStorm.numSegs =  int(vals[2])    # Number of Observations
             thisStorm.source = i + 1 # Flag data source as HURDAT ATL or NEPAC
