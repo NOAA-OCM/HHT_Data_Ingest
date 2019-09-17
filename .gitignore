@@ -13,3 +13,4 @@
 *.gz
 .Rproj.user
 __pycache__/*
+README.html
