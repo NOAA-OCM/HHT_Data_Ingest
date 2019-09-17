@@ -1,13 +1,23 @@
 # README #
 
-This is a program and some test data to combine 2 HURDAT2 files from the National Hurricane Center with one IBTrACS file from teh national Climatic Data Center to create one large data set of all tropical storm tracks from approximately 1942 up to the present.
+This repository contains the programs and some test data used for updating the Historical Hurricane Tracks (HHT) web site, [https://coast.noaa.gov/hurricanes/](https://coast.noaa.gov/hurricanes/).  These programs will ingest and combine three different data sources: two HURDAT2 data files, one each for the North Atlantic and one for the  Northeastern Pacific, from the National Hurricane Centers [HURDAT2 data sets](https://www.nhc.noaa.gov/data/#hurdat), and one global data file from the [International Best Track Archive for Climate Stewardship (IBTrACS)](https://www.ncdc.noaa.gov/ibtracs/) data set, currently (September, 2019) at version [V04r00](https://www.ncdc.noaa.gov/ibtracs/index.php?name=ib-v4-access).  
 
-In addition, the program should create 1) a single Shapefiles for each storm with just one line for the storm, with overall atrributes for that storm (max intensity, etc.) another Shapefile for each storm with all segments having the attributes for that segment. 
+All data sets are downloaded manually as csv files.  The HHT_AnnualUpdateV2.py program is then updated with new file names and run.  It will create four different shapefiles, in two sets, one of storms with all data (prefixed with "Good_"), and one set for storms with missing wind and/or pressure information (prefixed with "Missing_").  Each set consists of a Tracks shapefile, containing one attributed polyline for each storm, and a Segments shapefile, containing many polylines per storm, where each line represents the track segment from one time observation up to the next one.
 
-Data from these programs will be used to update the NOAA Office for Coastal Managment Historical Hurricane Tracks web site:
-coast.noaa.gov/hurricanes
+In the HHT data update process, these four shapefiles are then loaded into an SQL database of the Tracks (both Good and Missing) and Segments (again, both Good and Missing). That database is what is actually used by the HHT web application.
 
-For additional information, contact:
-Dave Eslinger
-NOAA Office for Coastal Management
+
+For additional information, contact:  
+Dave Eslinger  
+NOAA Office for Coastal Management  
 dave.eslinger@noaa.gov
+
+## NOAA Open Source Disclaimer
+This repository is a scientific product and is not official communication of the National Oceanic and Atmospheric Administration, or the United States Department of Commerce. All NOAA GitHub project code is provided on an ?as is? basis and the user assumes responsibility for its use. Any claims against the Department of Commerce or Department of Commerce bureaus stemming from the use of this GitHub project will be governed by all applicable Federal law. Any reference to specific commercial products, processes, or services by service mark, trademark, manufacturer, or otherwise, does not constitute or imply their endorsement, recommendation or favoring by the Department of Commerce. The Department of Commerce seal and logo, or the seal and logo of a DOC bureau, shall not be used in any manner to imply endorsement of any commercial product or activity by DOC or the United States Government.
+
+## License
+Software code created by U.S. Government employees is not subject to copyright in the United States (17 U.S.C.
+�105). The United States/Department of Commerce reserve all rights to seek and obtain copyright protection in
+countries other than the United States for Software authored in its entirety by the Department of Commerce. To
+this end, the Department of Commerce hereby grants to Recipient a royalty-free, nonexclusive license to use,
+copy, and create derivative works of the Software outside of the United States.

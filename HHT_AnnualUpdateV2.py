@@ -204,7 +204,7 @@ Missing=[None, None]
 #==============================================================================
 
 """ Get Crosswalk table to use to replace HURDAT2 filenames with IBTrACS
-    names to construct links for Storm Data Pages frum 
+    names to construct links for Storm Data Pages frum
     http://ibtracs.unca.edu/index.php?name=...
 """
 detailsBaseURL = "http://ibtracs.unca.edu/index.php?name=v04r00-"
@@ -226,7 +226,7 @@ with open(crosswalkFile, 'r') as cwFile:
              elif "hurdat" in lineVals:
                  ibName[vals[1]] = vals[0].strip()
 #                 print(vals, "\n ibName[",vals[1],"] is ", vals[0],"\n",
-#                       ibName[vals[1]])#    
+#                       ibName[vals[1]])#
 
 """ Processing functions """
 #"""--------------------------------------------------------------------"""
@@ -583,8 +583,8 @@ for i, file in enumerate(hFiles):
             thisStorm = Storm(vals[0],  # Create new storm using Unique ID
                               vals[1].strip())  # and Name w/out spaces
             """ If this storm has an IBTrACS ID, use it instead.
-            NOTE BENE: The IBTrACS crosswalk file prepends a "b" on to the 
-            HURDAT2 (and other) id values.  Therefore, we need to prepend that 
+            NOTE BENE: The IBTrACS crosswalk file prepends a "b" on to the
+            HURDAT2 (and other) id values.  Therefore, we need to prepend that
             in the test below. """
             testUID = 'b'+thisStorm.uid.lower()
             if (testUID) in ibName:
