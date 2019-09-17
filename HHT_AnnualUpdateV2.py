@@ -97,7 +97,7 @@ else:
     ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
     crosswalkFile = dataDir + \
         'IBTrACS_SerialNumber_NameMapping_v04r00_20190421.txt'
-    resultsDir = workDir + "Results/NameTest/dle_"  #  Location for final results
+    resultsDir = workDir + "Results/NewNumbers/"  #  Location for final results
 
 
 """ Create the needed Results directory if it doesn't exist """
@@ -942,7 +942,7 @@ for attribute in stormFields:
 segmentFields = [['SEGMNTOID','N','10'],
                  ['STORMID','C','58'],
                  ['MaxWindSpd','N','9'],
-                 ['BeginObHr','C','9'],
+                 ['BeginObHr','N','9'],
                  ['BeginLat','C','10'],  # Why C?  Is that character? Need a float!
                  ['BeginLon','C','10'],
                  ['Min_Press','C','10'],
@@ -954,7 +954,7 @@ segmentFields = [['SEGMNTOID','N','10'],
                  ['DispDate','C','20'],
                  ['DMin_Press','C','10'],
                  ['DDateNTime','C','20'],
-                 ['Segment_ID','C','12'],#End of previous attributes
+                 ['SegmntOrdr','N','12'],#End of previous attributes
                  ['Nature','C','20'],
                  ['ENSO','C','20'],
                  ['EndLat','C','20'],
