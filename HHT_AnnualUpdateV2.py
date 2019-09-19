@@ -34,6 +34,13 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
                      supported by Anaconda. DLE
          2019-08-27: Temp. changes to rerun 2017 data. Some storms not showing
                      up with 2018 updates in spatial search.
+         2019-09-19: Added some .strip() calls to storm ID fields.  I'm 
+                     suspicious that there are trailing spaces, or perhaps 
+                     non-printing characters that are causing teh segments to 
+                     not show up in the applications.
+                     Also have the remapping of storm IDs to use only IBTrACS
+                     names turned off.  That should eliminate the issue if the
+                     ID remapping is causing it.
 """
 
 import os
@@ -97,7 +104,7 @@ else:
     ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
     crosswalkFile = dataDir + \
         'IBTrACS_SerialNumber_NameMapping_v04r00_20190421.txt'
-    resultsDir = workDir + "Results/NewNumbers/"  #  Location for final results
+    resultsDir = workDir + "Results/NoIDSwap/"  #  Location for final results
 
 
 """ Create the needed Results directory if it doesn't exist """
@@ -582,15 +589,17 @@ for i, file in enumerate(hFiles):
             #print ("vals = ",vals[0],vals[1],vals[2], len(vals))
             thisStorm = Storm(vals[0],  # Create new storm using Unique ID
                               vals[1].strip())  # and Name w/out spaces
-            """ If this storm has an IBTrACS ID, use it instead.
-            NOTE BENE: The IBTrACS crosswalk file prepends a "b" on to the
-            HURDAT2 (and other) id values.  Therefore, we need to prepend that
-            in the test below. """
-            testUID = 'b'+thisStorm.uid.lower()
-            if (testUID) in ibName:
-#                print('Swapping IDs! HURDAT ID, ',thisStorm.uid,
-#                      ', IBTrACS ID, ', ibName[testUID])
-                thisStorm.uid = ibName[testUID].strip()
+# =============================================================================
+#             """ If this storm has an IBTrACS ID, use it instead.
+#             NOTE BENE: The IBTrACS crosswalk file prepends a "b" on to the
+#             HURDAT2 (and other) id values.  Therefore, we need to prepend that
+#             in the test below. """
+#             testUID = 'b'+thisStorm.uid.lower()
+#             if (testUID) in ibName:
+# #                print('Swapping IDs! HURDAT ID, ',thisStorm.uid,
+# #                      ', IBTrACS ID, ', ibName[testUID])
+#                 thisStorm.uid = ibName[testUID].strip()
+# =============================================================================
 
             thisStorm.numSegs =  int(vals[2])    # Number of Observations
             thisStorm.source = i + 1 # Flag data source as HURDAT ATL or NEPAC
