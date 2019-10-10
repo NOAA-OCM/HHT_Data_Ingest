@@ -22,8 +22,8 @@ files and then identify the correct links based on some pattern matching.
 import requests
 from bs4 import BeautifulSoup
 
-hurdatDir = "https://www.nhc.noaa.gov/data"
-result = requests.get(hurdatDir)
+hurdatDir = "https://www.nhc.noaa.gov"
+result = requests.get(hurdatDir+"/data")
 #result = requests.get("https://www.google.com")
 #print(result.status_code)
 
@@ -33,12 +33,13 @@ src = result.content
 soup = BeautifulSoup(src, 'lxml')
 links = soup.find_all("a")
 #print(links)
-
-
+hurdatFiles = []
 for link in links:
     if "download" in link.text:
 #    if "About" in link.text:
  #       print(link)
-        foo = hurdatDir + link.attrs['href']
-        print(foo)
-        
+        hurdatFiles.append(hurdatDir + link.attrs['href'])
+
+print(hurdatFiles[0],"\n",hurdatFiles[1])
+
+NA_data = requests.get(hurdatFiles[0])
