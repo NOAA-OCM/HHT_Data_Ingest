@@ -12,7 +12,8 @@ Pacific from the NOAA/NWS National Hurricane Center HURDAT2 data sets at:
 It also downloads IBTrACS data (one file with global coverage) and a file
 with a crosswalk between IBTrACS ID names and those used by the contributing
 agencies.  We need this to give HURDAT2-derived storms the correct identifier
-to use with the Storm_Details link hosted by IBTrACS.
+to use with the Storm_Details link hosted by IBTrACS. IBTrACS data at:
+    https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r00/access/csv/
     
 Because links change at least yearly, and frequently more often, this program 
 first does a bit of web scrapping/directory listing to find all potential 
@@ -21,8 +22,15 @@ files and then identify the correct links based on some pattern matching.
 
 import requests
 from bs4 import BeautifulSoup
+import ftplib
+import urllib
 
+""" Data locations, filenames, etc. """
+dataDir = "./data"
 hurdatDir = "https://www.nhc.noaa.gov"
+ibtracsDir = 'https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r00/access/csv/'
+print(ibtracsDir)
+
 result = requests.get(hurdatDir+"/data")
 #result = requests.get("https://www.google.com")
 #print(result.status_code)
@@ -42,4 +50,4 @@ for link in links:
 
 print(hurdatFiles[0],"\n",hurdatFiles[1])
 
-NA_data = requests.get(hurdatFiles[0])
+#NA_data = requests.get(hurdatFiles[0])
