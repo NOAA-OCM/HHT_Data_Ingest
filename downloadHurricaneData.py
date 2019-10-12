@@ -21,9 +21,11 @@ files and then identify the correct links based on some pattern matching.
 """
 
 import os
+import sys
+import datetime
 import requests
 from bs4 import BeautifulSoup
-import ftplib
+#import ftplib
 import urllib
 
 """ Data locations, filenames, etc. """
@@ -38,24 +40,74 @@ if( not os.path.isdir(dataDir) ):
     try:
         os.mkdir(dataDir)
     except:
-        print("Creation of data directory failed")
+        sys.exit("Creation of data directory failed")
     else:
         print("Data directory successfully created")
 else:
     print("Data directory already exists")
 
+# File names
+logFile = dataDir + "/dataDownloadHistory.log"
 natlFile = dataDir + "/natlData.csv"
 nepacFile = dataDir + "/nepacData.csv"
 ibtracsFile = dataDir + "/ibtracsData.csv"
+nameMappingFile = dataDir + "/nameMapping.txt"
+
+ibDataPattern = "ibtracs.ALL"
+ibNamesPattern = "NameMapping"
+
+""" Initialize log file """
+log  = open(logFile, mode = "a")
+msg = str(datetime.datetime.now()) +": Data download\n"
+log.write(msg)
+#print(msg)
+#log.close()
+#sys.exit('exit here')
+
+""" IBTrACS download """
+result = requests.get(ibtracsDir) #Get the directory list from URL
+#print(result.status_code)
+pageContent = result.content
+#print(pageContent)
+soup = BeautifulSoup(pageContent, 'lxml') # Extract the links
+links = soup.find_all("a")
+#print(links)
+
+for link in links:  # Scan links for needed file names
+    if ibDataPattern in link.text:
+        ibDataRemote = link.text
+    if ibNamesPattern in link.text:
+        ibNamesRemote = link.text
+
+log.write("IBTrACS files from " + ibtracsDir + ":\n")
+#log.write("  " + ibDataRemote + "\n")
+#log.write("  " + ibNamesRemote + "\n") 
+# download the files
+try:
+    urllib.request.urlretrieve(ibtracsDir + "/" + ibDataRemote,ibtracsFile)
+except:
+    log.write("  Download fail for " + ibDataRemote + "\n")
+else:
+    log.write("  " + ibDataRemote + "\n")
+   
+try:
+    urllib.request.urlretrieve(ibtracsDir + "/" + ibNamesRemote,nameMappingFile)
+except:
+    log.write("  Download fail for " + ibNamesRemote + "\n")
+else:
+    log.write("  " + ibNamesRemote + "\n")
+        
+
+""" HURDAT2 Download """
 
 result = requests.get(hurdatDir+"/data")
 #result = requests.get("https://www.google.com")
 #print(result.status_code)
 
-src = result.content
-#print(src)
+pageContent = result.content
+#print(pageContent)
 
-soup = BeautifulSoup(src, 'lxml')
+soup = BeautifulSoup(pageContent, 'lxml')
 links = soup.find_all("a")
 #print(links)
 hurdatFiles = []
@@ -63,10 +115,26 @@ for link in links:
     if "download" in link.text:
 #    if "About" in link.text:
  #       print(link)
-        hurdatFiles.append(hurdatDir + link.attrs['href'])
+        hurdatFiles.append(link.attrs['href'])
 
-print(hurdatFiles[0],"\n",hurdatFiles[1])
+#print(hurdatFiles[0],"\n",hurdatFiles[1])
 
 #NA_data = requests.get(hurdatFiles[0])
-urllib.request.urlretrieve(hurdatFiles[0],natlFile)
-urllib.request.urlretrieve(hurdatFiles[1],nepacFile)
+log.write("HURDAT2 files from " + hurdatDir + ":\n")
+try:
+    urllib.request.urlretrieve(hurdatDir + hurdatFiles[0],natlFile)
+except:
+    log.write("  Download failed for " + hurdatFiles[0] + "\n")
+else:
+    log.write("  " + hurdatFiles[0] + "\n")
+
+try:
+    urllib.request.urlretrieve(hurdatDir + hurdatFiles[1],nepacFile)
+except:
+    log.write("  Download failed for " + hurdatFiles[1] + "\n")
+else:
+    log.write("  " + hurdatFiles[1] + "\n")
+
+
+log.write("\n")
+log.close()
