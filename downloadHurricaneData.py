@@ -20,16 +20,33 @@ first does a bit of web scrapping/directory listing to find all potential
 files and then identify the correct links based on some pattern matching.
 """
 
+import os
 import requests
 from bs4 import BeautifulSoup
 import ftplib
 import urllib
 
 """ Data locations, filenames, etc. """
-dataDir = "./data"
+# URLs for data:
 hurdatDir = "https://www.nhc.noaa.gov"
 ibtracsDir = 'https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r00/access/csv/'
-print(ibtracsDir)
+#print(ibtracsDir)
+
+# Location and file names to store downloaded data:
+dataDir = "./data"
+if( not os.path.isdir(dataDir) ):
+    try:
+        os.mkdir(dataDir)
+    except:
+        print("Creation of data directory failed")
+    else:
+        print("Data directory successfully created")
+else:
+    print("Data directory already exists")
+
+natlFile = dataDir + "/natlData.csv"
+nepacFile = dataDir + "/nepacData.csv"
+ibtracsFile = dataDir + "/ibtracsData.csv"
 
 result = requests.get(hurdatDir+"/data")
 #result = requests.get("https://www.google.com")
@@ -51,3 +68,5 @@ for link in links:
 print(hurdatFiles[0],"\n",hurdatFiles[1])
 
 #NA_data = requests.get(hurdatFiles[0])
+urllib.request.urlretrieve(hurdatFiles[0],natlFile)
+urllib.request.urlretrieve(hurdatFiles[1],nepacFile)
