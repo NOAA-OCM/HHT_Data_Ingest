@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Oct  9 11:52:42 2019
+Created on Wed Oct  12, 2019
 
 @author: Dave Eslinger
          dave.eslinger@noaa.gov
