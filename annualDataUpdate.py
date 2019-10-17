@@ -16,12 +16,15 @@ New version using Pandas and modular approach for cloud deployment.
 """ Standard Python libraries  """
 import os
 import sys
-import pandas as pd
+#import pandas as pd
 import math
 import random
 import json
 import datetime as dt
 import shapefile
+import geopandas as gpd
+from shapely.geometry import MultiLineString
+
 
 """  These next two packages are custom packages for this progam.  They
     should be in the same directory as HHT_Annualupdate
@@ -31,7 +34,7 @@ import stormReportDownload # Local python module
 
 """ Declarations and Parameters """
 SCRAMBLE = True
-WEBMERC = True
+WEBMERC = False
 BREAK180 = True
 OMIT_PROVISIONAL = True
 TESTING = True
@@ -48,19 +51,21 @@ NO391521 = True
 use_HURDAT = True
 dupRange = 5
 
+
 """---------- DEFINE WORKING DIRECTORIES AND FILE NAMES --------------------"""
-workDir = "." 
+workDir = "C:/temp/HHT/new" 
 dataDir = workDir + "/data"
 resultsDir = workDir + "/results"
-if( not os.path.isdir(dataDir) ):
+""" Create the needed Results directory if it doesn't exist """
+if( not os.path.isdir(resultsDir) ):
     try:
-        os.mkdir(dataDir)
+        os.makedirs(resultsDir, exist_ok=True)
     except:
-        sys.exit("Creation of data directory failed")
+        sys.exit("Creation of results directory failed")
     else:
-        print("Data directory successfully created")
+        print("Results directory successfully created")
 else:
-    print("Data directory already exists")
+    print("Results directory already exists")
 
 # File names
 logFile = dataDir + "/update.log"
@@ -69,12 +74,30 @@ nepacFile = dataDir + "/nepacData.csv"
 ibtracsFile = dataDir + "/ibtracsData.csv"
 nameMappingFile = dataDir + "/nameMapping.txt"
 
-""" Create the needed Results directory if it doesn't exist """
-os.makedirs(os.path.dirname(resultsDir),exist_ok=True)
+
 """ Adding an ingest.log ascii file to record QA/QC results in the Results
     directory. """
-logFileName = resultsDir + "ingest.log"
+logFileName = resultsDir + "/ingest.log"
 logFile = open(logFileName,'w')
+
+""" Define output shapefile names """
+if WEBMERC:
+    goodSegmentFileName = resultsDir+'/goodSegments_WebMerc'
+    goodStormFileName = resultsDir+'/goodTracks_WebMerc'
+    missingSegmentFileName = resultsDir+'/missingSegments_WebMerc'
+    missingStormFileName = resultsDir+'/missingTracks_WebMerc'
+else:
+     goodSegmentFileName = resultsDir+'/goodSegments_WGS84'
+     goodStormFileName = resultsDir+'/goodTracks_WGS84'
+     missingSegmentFileName = resultsDir+'/missingSegments_WGS84'
+     missingStormFileName = resultsDir+'/missingTracks_WGS84'
+
+
+""" Define JSON filenames """
+namesJS = resultsDir + '/stormnames.js'
+yearsJSON = resultsDir + '/hurricaneYears.json'
+
+"""--------------------------------------------------------------------"""
 
 """ Specify what HURDAT years to run.  If hFIles is empty, then skip HURDAT
     (ONLY USED FOR TESTING IBTrACS SPECIFIC CODE) """
@@ -82,34 +105,9 @@ hFiles = [natlFile, nepacFile]
 hBasin = ["NA","EP"]
 #hFiles = []
 
-""" Define output shapefile names """
-if WEBMERC:
-    goodSegmentFileName = resultsDir+'goodSegments_WebMerc_2018'
-    goodStormFileName = resultsDir+'goodTracks_WebMerc_2018'
-    missingSegmentFileName = resultsDir+'missingSegments_WebMerc_2018'
-    missingStormFileName = resultsDir+'missingTracks_WebMerc_2018'
-else:
-     goodSegmentFileName = resultsDir+'goodSegments_2018'
-     goodStormFileName = resultsDir+'goodTracks_2018'
-     missingSegmentFileName = resultsDir+'missingSegments_2018'
-     missingStormFileName = resultsDir+'missingTracks_2018'
 
 
-""" Define JSON filenames """
-namesJS = resultsDir + 'stormnames.js'
-yearsJSON = resultsDir + 'hurricaneYears.json'
-
-"""--------------------------------------------------------------------"""
-
-
-""" Define EPSG code for needed projection.  Either Manually or using
-    modification of this:
-
-    def getPRJwkt(epsg):
-        import urllib
-        f=urllib.urlopen("http://spatialreference.org/ref/epsg/{0}/prettywkt/".format(epsg))
-        return (f.read())
-    Which is from comments in: https://code.google.com/p/pyshp/wiki/PyShpDocs
+""" Define EPSG code for needed projection. 
 """
 if WEBMERC:
     earthRadius = 6378137.0
@@ -312,6 +310,8 @@ numAllMissing = 0
 numSinglePoint = 0
 numGoodObs = 0
 
+
+
 """ Read IBTrACS data
     This data is not split by storms, rather every row has all info in it
     Therefore, we must read the data, find out if it is a new storm, and
@@ -322,7 +322,7 @@ numGoodObs = 0
     We know the IBTrACS data starts with 3 header rows, then the 4th row
     is our first legitimate data record.
     Initialize the first thisStorm object from that"""
-ibFiles = [ibRaw]
+ibFiles = [ibtracsFile]
 #ibFiles = []
 ibNum = 0 # Initialize IBTrACS storm counter,
           # it will increment when storm end is found
@@ -330,7 +330,7 @@ ibSkipNum = 0  # Number of NA and EP storms skipped to prevent HURDAT2 duplicate
 for i, file in enumerate(ibFiles):
     print (i, file)
     print ('IBTrACS file: ', file)
-    with open(ibRaw, "r") as rawObsFile:
+    with open(ibtracsFile, "r") as rawObsFile:
          head1 = rawObsFile.readline()
          head2 = rawObsFile.readline()
          head3 = rawObsFile.readline()
@@ -795,6 +795,21 @@ for i, storm in enumerate(allStorms):
 # uniqueNatures = set(allNatures)
 # print(sorted(uniqueNatures))
 #==============================================================================
+
+""" ==========================================================================
+    Got all data ready, now initialize and write out spatial objects 
+    with geopandas and shapely
+==========================================================================="""
+
+""" Create Empty geodataframes """
+tracks = gpd.GeoDataFrame()
+segments = gpd.GeoDataFrame()
+
+# Add geometry column
+tracks['geometry'] = None
+segments['geometry'] = None
+
+Check this link out: http://geopandas.org/mergingdata.html
 
 stormFields = [['STRMTRKOID','N','10'],
                ['STORMID','C','56'],
