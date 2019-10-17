@@ -84,20 +84,26 @@ use_HURDAT = True
 dupRange = 5
 
 """---------- DEFINE WORKING DIRECTORIES AND FILE NAMES --------------------"""
-workDir = "C:/GIS/Hurricanes/HHT/2018_Season/" # C: at work, K: at home
+#workDir = "C:/GIS/Hurricanes/HHT/2018_Season/" # C: at work, K: at home
 #workDir = "C:/GIS/Hurricanes/HHT/2017_Season/" # Checking functionality
-dataDir = workDir + "Data/"  # Data location
+#dataDir = workDir + "Data/"  # Data location
+workDir = "C:/temp/HHT_2018"
+dataDir = workDir + "/data"
 if TESTING:
-    h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
-    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
-    ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
+#    h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
+#    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
+#    ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
 #    h2AtlRaw = dataDir + "hurdat2-1851-2017-050118.txt"     # HURDAT2 North Atlantic Data
 #    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2017-050418.txt" # HURDAT2 NE North Pacific Data
 #    ibRaw = dataDir + "Allstorms.ibtracs_csc.v03r10.csv" # 2018 storm data
-    crosswalkFile = "C:/GIS/Hurricanes/HHT/2018_Season/Data/" \
-        'IBTrACS_SerialNumber_NameMapping_v04r00_20191006.txt'
+#    crosswalkFile = "C:/GIS/Hurricanes/HHT/2018_Season/Data/" \
+#        'IBTrACS_SerialNumber_NameMapping_v04r00_20191006.txt'
+    h2AtlRaw = dataDir + "/natlData.csv"     # HURDAT2 North Atlantic Data
+    h2nepacRaw = dataDir + "/nepacData.csv" # HURDAT2 NE North Pacific Data
+    ibRaw = dataDir + "/ibtracsData.csv" # 2018 storm data
+    crosswalkFile = dataDir + "/nameMapping.txt"
     # Location & prefix w/out trailing '/' for test data
-    resultsDir = workDir + "Results/Test/Oct08B/"
+    resultsDir = workDir + "/Results/PG_WGS84_SingleLine/"
 else:
     h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
     h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
@@ -431,10 +437,10 @@ for i, file in enumerate(ibFiles):
          observation = Segment(vals[6],  # ISO 8601 Time
                                vals[8], # Lat
                                vals[9], # Lon
-                               vals[23], # USA_Wind speed Was [10]
-                               vals[24], # USA_Pressure
-#                               vals[10], # USA_Wind speed Was [10]
-#                               vals[11], # USA_Pressure
+#                               vals[23], # USA_Wind speed Was [10]
+#                               vals[24], # USA_Pressure
+                               vals[10], # USA_Wind speed Was [10]
+                               vals[11], # USA_Pressure
                                vals[7] ) # Nature
          
          observation.startLon = observation.startLon if observation.startLon <= 180.0 else observation.startLon - 360.
@@ -468,10 +474,10 @@ for i, file in enumerate(ibFiles):
                      observation = Segment(vals[6],  # ISO 8601 Time
                                            vals[8], # Lat
                                            vals[9], # Lon
-                                           vals[23], # USA_Wind speed Was [10]
-                                           vals[24], # USA_Pressure
-#                                           vals[10], # USA_Wind speed Was [10]
-#                                           vals[11], # USA_Pressure
+#                                           vals[23], # USA_Wind speed Was [10]
+#                                           vals[24], # USA_Pressure
+                                           vals[10], # USA_Wind speed Was [10]
+                                           vals[11], # USA_Pressure
                                            vals[7] ) # Nature
                      observation.startLon = observation.startLon if observation.startLon <= 180.0 else observation.startLon - 360.
                      ibHour = observation.time.hour*100+observation.time.minute
@@ -516,10 +522,10 @@ for i, file in enumerate(ibFiles):
                      observation = Segment(vals[6],  # ISO 8601 Time
                                            vals[8], # Lat
                                            vals[9], # Lon
-                                           vals[23], # USA_Wind speed Was [10]
-                                           vals[24], # USA_Pressure
-#                                           vals[10], # USA_Wind speed Was [10]
-#                                           vals[11], # USA_Pressure
+#                                           vals[23], # USA_Wind speed Was [10]
+#                                           vals[24], # USA_Pressure
+                                           vals[10], # USA_Wind speed Was [10]
+                                           vals[11], # USA_Pressure
                                            vals[7] ) # Nature
                      observation.startLon = observation.startLon if observation.startLon <= 180.0 else observation.startLon - 360.
                      thisStorm.segs.append(observation)
@@ -593,17 +599,15 @@ for i, file in enumerate(hFiles):
             #print ("vals = ",vals[0],vals[1],vals[2], len(vals))
             thisStorm = Storm(vals[0],  # Create new storm using Unique ID
                               vals[1].strip())  # and Name w/out spaces
-# =============================================================================
-#             """ If this storm has an IBTrACS ID, use it instead.
-#             NOTE BENE: The IBTrACS crosswalk file prepends a "b" on to the
-#             HURDAT2 (and other) id values.  Therefore, we need to prepend that
-#             in the test below. """
-#             testUID = 'b'+thisStorm.uid.lower()
-#             if (testUID) in ibName:
-# #                print('Swapping IDs! HURDAT ID, ',thisStorm.uid,
-# #                      ', IBTrACS ID, ', ibName[testUID])
-#                 thisStorm.uid = ibName[testUID].strip()
-# =============================================================================
+            """ If this storm has an IBTrACS ID, use it instead.
+            NOTE BENE: The IBTrACS crosswalk file prepends a "b" on to the
+            HURDAT2 (and other) id values.  Therefore, we need to prepend that
+            in the test below. """
+            testUID = 'b'+thisStorm.uid.lower()
+            if (testUID) in ibName:
+#                print('Swapping IDs! HURDAT ID, ',thisStorm.uid,
+#                      ', IBTrACS ID, ', ibName[testUID])
+                thisStorm.uid = ibName[testUID].strip()
 
             thisStorm.numSegs =  int(vals[2])    # Number of Observations
             thisStorm.source = i + 1 # Flag data source as HURDAT ATL or NEPAC
@@ -942,9 +946,9 @@ stormFields = [['STRMTRKOID','N','10'],
 #==============================================================================
 """ Create and initalize the fields for the needed Tracks Shapefiles """
 #goodTracks = shapefile.Writer(shapefile.POLYLINE) #One line & record per storm
-goodTracks = shapefile.Writer(goodStormFileName) #, shapeType = 3) #One line & record per storm
+goodTracks = shapefile.Writer(goodStormFileName, shapeType = 'POLYLINE') #One line & record per storm
 goodTracks.autobalance = 1 # make sure all shapes have records
-missingTracks = shapefile.Writer(missingStormFileName) #, shapeType = 3) #One line & record per storm
+missingTracks = shapefile.Writer(missingStormFileName, shapeType = 'POLYLINE') #One line & record per storm
 missingTracks.autobalance = 1 # make sure all shapes have records
 for attribute in stormFields:
     goodTracks.field(attribute[0],attribute[1],attribute[2]) # Add Fields
@@ -974,9 +978,9 @@ segmentFields = [['SEGMNTOID','N','10'],
                  ['EndLon','C','20']]
 
 """ Create and initalize the fields for the needed Tracks Shapefiles """
-goodSegments = shapefile.Writer(goodSegmentFileName) #, shapeType = 3) # New shapefile
+goodSegments = shapefile.Writer(goodSegmentFileName, shapeType = 'POLYLINE') # New shapefile
 goodSegments.autoBalance = 1 # make sure all shapes have records
-missingSegments = shapefile.Writer(missingSegmentFileName) #, shapeType = 3) # New shapefile
+missingSegments = shapefile.Writer(missingSegmentFileName, shapeType = 'POLYLINE') # New shapefile
 missingSegments.autoBalance = 1 # make sure all shapes have records
 for attribute in segmentFields: # Add Fields for track shapefile
     goodSegments.field(attribute[0],attribute[1],attribute[2])
@@ -1117,7 +1121,8 @@ for i, storm in enumerate(allStorms):
 
 
         """ Add this segment's data to the appropriate segments shapefile """
-        if goodStorm:
+#        if goodStorm:
+        if True:
             goodSegCoords.append(segCoords)
             goodSegParams.append([segmentOID,     # Storm Object ID,
                            storm.uid,           # Storm ID
@@ -1217,7 +1222,8 @@ for i, storm in enumerate(allStorms):
     endObDate = dt.datetime.strftime(storm.endTime,'%Y%m%d')
     """   --------  End of Extra fields   ------------    """
     """ Append track to appropriate stormTracks list """
-    if goodStorm:
+#    if goodStorm:
+    if True:
         numGoodObs += 1
         goodTracks.line(trackCoords ) # Add the shape
         goodTracks.record(stormOID,     # Storm Object ID,

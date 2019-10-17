@@ -20,8 +20,8 @@ first does a bit of web scrapping/directory listing to find all potential
 files and then identify the correct links based on some pattern matching.
 """
 
-import os
-import sys
+import os, sys
+
 import datetime
 import requests
 from bs4 import BeautifulSoup
@@ -35,10 +35,10 @@ ibtracsDir = 'https://www.ncei.noaa.gov/data/international-best-track-archive-fo
 #print(ibtracsDir)
 
 # Location and file names to store downloaded data:
-dataDir = "./data"
+dataDir = "C:/temp/HHT_2018/data"
 if( not os.path.isdir(dataDir) ):
     try:
-        os.mkdir(dataDir)
+        os.makedirs(dataDir, exist_ok = True)
     except:
         sys.exit("Creation of data directory failed")
     else:
