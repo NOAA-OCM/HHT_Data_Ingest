@@ -17,14 +17,19 @@ Created on Mon Jul 15 12:50:34 2019
 import pandas as pd
 #import datetime as dt
 
-workDir = "K:/GIS/Hurricanes/HHT/2018_Season/" # C: at work, K: at home
-dataDir = workDir + "Data/"  # Data location
+workDir = "." # C: at work, K: at home
+dataDir = workDir + "/data"  # Data location
 
-ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv"
-ibdf = pd.read_csv(dataDir + "ibtracs.ALL.list.v04r00.csv", na_filter = False)
-#ibRaw = dataDir + "ibTESTv04r00.csv"
+ibRaw = dataDir + "/ibtracsData.csv"
+ibdf = pd.read_csv(ibRaw, 
+                   na_values = ['-1',' '],
+                   header = [0,1])  
+cnames = next(zip(*ibdf))
+ibdf.columns = cnames#ibRaw = dataDir + "ibTESTv04r00.csv"
 #ibdf = pd.read_csv(dataDir + "ibTESTv04r00.csv", na_filter = False)
-print(ibdf.head(10))
+print(ibdf.head(3))
+
+
 print(ibdf.info)
 ibdf.LAT.unique()
 

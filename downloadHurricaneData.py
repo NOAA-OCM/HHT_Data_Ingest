@@ -36,6 +36,7 @@ ibtracsDir = 'https://www.ncei.noaa.gov/data/international-best-track-archive-fo
 
 # Location and file names to store downloaded data:
 dataDir = "C:/temp/HHT_2018/data"
+dataDir = "./data"
 if( not os.path.isdir(dataDir) ):
     try:
         os.makedirs(dataDir, exist_ok = True)
