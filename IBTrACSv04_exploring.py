@@ -15,20 +15,25 @@ Created on Mon Jul 15 12:50:34 2019
 """
 
 import pandas as pd
+import os
 #import datetime as dt
-
+print(os.getcwd())
 workDir = "." # C: at work, K: at home
 dataDir = workDir + "/data"  # Data location
 
 ibRaw = dataDir + "/ibtracsData.csv"
 ibdf = pd.read_csv(ibRaw, 
                    na_values = ['-1',' '],
+                   parse_dates = [6,7],
+                   infer_datetime_format = True,
+                   nrows = 200, 
                    header = [0,1])  
 cnames = next(zip(*ibdf))
-ibdf.columns = cnames#ibRaw = dataDir + "ibTESTv04r00.csv"
-#ibdf = pd.read_csv(dataDir + "ibTESTv04r00.csv", na_filter = False)
-print(ibdf.head(3))
+ibdf.columns = cnames
 
+print(ibdf.head(3))
+ibdf.describe()
+ibdf.info()
 
 print(ibdf.info)
 ibdf.LAT.unique()
