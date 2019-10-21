@@ -17,6 +17,7 @@ New version using Pandas and modular approach for cloud deployment.
 import os
 import sys
 #import pandas as pd
+import numpy as np
 import math
 import random
 import json
@@ -53,9 +54,9 @@ dupRange = 5
 
 
 """---------- DEFINE WORKING DIRECTORIES AND FILE NAMES --------------------"""
-workDir = "C:/temp/HHT/new" 
-dataDir = workDir + "/data"
-resultsDir = workDir + "/results"
+workDir = "C:/temp/HHT/new/" 
+dataDir = workDir + "data/"
+resultsDir = workDir + "results/ibTestMix5/"
 """ Create the needed Results directory if it doesn't exist """
 if( not os.path.isdir(resultsDir) ):
     try:
@@ -68,16 +69,16 @@ else:
     print("Results directory already exists")
 
 # File names
-logFile = dataDir + "/update.log"
-natlFile = dataDir + "/natlData.csv"
-nepacFile = dataDir + "/nepacData.csv"
-ibtracsFile = dataDir + "/ibtracsData.csv"
-nameMappingFile = dataDir + "/nameMapping.txt"
+logFile = dataDir + "update.log"
+natlFile = dataDir + "natlData.csv"
+nepacFile = dataDir + "nepacData.csv"
+ibtracsFile = dataDir + "ibtracsData.csv"
+nameMappingFile = dataDir + "nameMapping.txt"
 
 
 """ Adding an ingest.log ascii file to record QA/QC results in the Results
     directory. """
-logFileName = resultsDir + "/ingest.log"
+logFileName = resultsDir + "ingest.log"
 logFile = open(logFileName,'w')
 
 """ Define output shapefile names """
@@ -246,6 +247,58 @@ def getCat(nature, wind):
 #==============================================================================
 """------------------------END OF getCat-------------------------------"""
 
+""" getWindPres function to find none NaN wind and pressure in data """
+def getWindPres(values):
+    windSpd = ' ' # Default to missing value
+    pressure = ' ' # Default to missing value
+    
+    possibles = [10, 23, 144, 149, 95, 75, 45, 57, 62, 67, 120, 124]
+    
+    for i in possibles:
+        if(values[i] != ' '): #Good data exists, use it
+            windSpd = values[i]
+            pressure = values[i+1]
+            break
+            
+
+    
+#    if(not np.isnan(int(values[10])) ):            # First test WMO
+#        windSpd = int(values[10])
+#        pressure = int(values[11])
+#    elif (not np.isnanint((values[23])) ):      # Next use USA
+#        windSpd = int(values[23])
+#        pressure = int(values[24])
+# =============================================================================
+#     if(values[10] != ' ' ):            # First test WMO
+#         windSpd = (values[10])
+#         pressure = (values[11])
+#     elif (values[23] != ' ' ):      # Next use USA
+#         windSpd = (values[23])
+#         pressure = (values[24])
+#     elif (values[144] != ' ' ):      # Neumann
+#         windSpd = (values[144])
+#         pressure = (values[145])
+#     elif (values[149] != ' ' ):      # Chenowith
+#         windSpd = (values[149])
+#         pressure = (values[150])
+#     elif (values[45] != ' ' ):      # Tokyo
+#         windSpd = (values[45])
+#         pressure = (values[46])
+#     elif (values[57] != ' ' ):      # China
+#         windSpd = (values[57])
+#         pressure = (values[58])
+#     else:
+#         windSpd = ' '
+#         pressure = ' '
+# =============================================================================
+        
+        
+    return (windSpd, pressure)         
+                
+"""------------------------END OF getWindPres-------------------------------"""
+            
+
+
 """ Create needed Objects """
 class Storm(object):
     def __init__(self,uid,name):
@@ -328,8 +381,8 @@ ibNum = 0 # Initialize IBTrACS storm counter,
           # it will increment when storm end is found
 ibSkipNum = 0  # Number of NA and EP storms skipped to prevent HURDAT2 duplicates
 for i, file in enumerate(ibFiles):
-    print (i, file)
-    print ('IBTrACS file: ', file)
+#    print (i, file)
+#    print ('IBTrACS file: ', file)
     with open(ibtracsFile, "r") as rawObsFile:
          head1 = rawObsFile.readline()
          head2 = rawObsFile.readline()
@@ -342,17 +395,25 @@ for i, file in enumerate(ibFiles):
          IBTrACS website for all the possibilites.  We will be using the 'USA'
          values for winds and pressure that should be similar to what was 
          previously provided as a 'CSC' version of the IBTrACSv03 data. """
-         print(vals)
-
+#         print(vals)
+         
+         """ Parse vals() to find non-null wind and pressure values from
+             appropriate preporting agency """
+            
+         tmpWind, tmpPres = getWindPres(vals)            
+         
+         
          """ Create first storm """
          thisStorm = Storm(vals[0],          # Unique IBTrACS ID
                            vals[5].strip())  # Name, spaces removed
     #     observation = Segment(vals[6],  # ISO 8601 Time
          observation = Segment(vals[6],  # ISO 8601 Time
                                vals[8], # Lat
-                               vals[8], # Lon
-                               vals[23], # USA_Wind speed Was [10]
-                               vals[24], # USA_Pressure
+                               vals[9], # Lon
+#                               vals[23], # USA_Wind speed Was [10]
+#                               vals[24], # USA_Pressure
+                               tmpWind, # Wind from best estimate
+                               tmpPres, # Pressure from non-missing
                                vals[7] ) # Nature
          thisStorm.segs.append(observation)
          thisStorm.startTime = observation.time
@@ -374,11 +435,14 @@ for i, file in enumerate(ibFiles):
              else: # Data read: Parse it and test to see if it is a new storm
                  vals = lineVals.split(",")
                  if vals[0] == thisStorm.uid :  # Same storm so add the record
+                     tmpWind, tmpPres = getWindPres(vals)            
                      observation = Segment(vals[6],  # ISO 8601 Time
                                            vals[8], # Lat
                                            vals[9], # Lon
-                                           vals[23], # USA_Wind speed Was [10]
-                                           vals[24], # USA_Pressure
+#                                           vals[23], # USA_Wind speed Was [10]
+#                                           vals[24], # USA_Pressure
+                                           tmpWind, # Wind from best estimate
+                                           tmpPres, # Pressure from non-missing
                                            vals[7] ) # Nature
                      ibHour = observation.time.hour*100+observation.time.minute
                      if NO391521 and (ibHour == 300 or ibHour == 900 or
@@ -395,7 +459,7 @@ for i, file in enumerate(ibFiles):
                      if (OMIT_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
                          # Add old storm to provisionalStorms
                          ibProvisional += 1                           
-                         print('Provisional storm ', ibProvisional)
+#                         print('Provisional storm ', ibProvisional)
                          provisionalStorms.append(thisStorm) 
                      else:
                          """ Only keep the storm if there is more than ONE observation: """
@@ -419,11 +483,14 @@ for i, file in enumerate(ibFiles):
                      thisStorm = Storm(vals[0],          # Unique IBTrACS ID
                                        vals[5].strip())  # Name, spaces removed
                      """ Add the first segment information to the storm """
+                     tmpWind, tmpPres = getWindPres(vals)            
                      observation = Segment(vals[6],  # ISO 8601 Time
                                            vals[8], # Lat
                                            vals[9], # Lon
-                                           vals[23], # USA_Wind speed Was [10]
-                                           vals[24], # USA_Pressure
+#                                           vals[23], # USA_Wind speed Was [10]
+#                                           vals[24], # USA_Pressure
+                                           tmpWind, # Wind from best estimate
+                                           tmpPres, # Pressure from non-missing
                                            vals[7] ) # Nature
                      thisStorm.segs.append(observation)
                      thisStorm.startTime = observation.time
@@ -809,7 +876,7 @@ segments = gpd.GeoDataFrame()
 tracks['geometry'] = None
 segments['geometry'] = None
 
-Check this link out: http://geopandas.org/mergingdata.html
+#Check this link out: http://geopandas.org/mergingdata.html
 
 stormFields = [['STRMTRKOID','N','10'],
                ['STORMID','C','56'],
