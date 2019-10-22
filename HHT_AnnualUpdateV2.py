@@ -34,9 +34,9 @@ Revised: 2014-12-18: HURDAT2 and IBTrACS import working for 2013 data (DLE)
                      supported by Anaconda. DLE
          2019-08-27: Temp. changes to rerun 2017 data. Some storms not showing
                      up with 2018 updates in spatial search.
-         2019-09-19: Added some .strip() calls to storm ID fields.  I'm 
-                     suspicious that there are trailing spaces, or perhaps 
-                     non-printing characters, that are causing the segments to 
+         2019-09-19: Added some .strip() calls to storm ID fields.  I'm
+                     suspicious that there are trailing spaces, or perhaps
+                     non-printing characters, that are causing the segments to
                      not show up in the applications.
                      Also have the remapping of storm IDs to use only IBTrACS
                      names turned off.  That should eliminate the issue if the
@@ -69,7 +69,7 @@ WEBMERC = True
 BREAK180 = True
 OMIT_PROVISIONAL = False
 LABEL_PROVISIONAL = True
-TESTING = True
+TESTING = False
 
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
@@ -105,12 +105,16 @@ if TESTING:
     # Location & prefix w/out trailing '/' for test data
     resultsDir = workDir + "/Results/PG_WGS84_SingleLine/"
 else:
-    h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
-    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
-    ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
-    crosswalkFile = dataDir + \
-        'IBTrACS_SerialNumber_NameMapping_v04r00_20191006.txt'
-    resultsDir = workDir + "Results/"  #  Location for final results
+#    h2AtlRaw = dataDir + "hurdat2-1851-2018-051019.txt"     # HURDAT2 North Atlantic Data
+#    h2nepacRaw = dataDir + "hurdat2-nepac-1949-2018-071519.txt" # HURDAT2 NE North Pacific Data
+#    ibRaw = dataDir + "ibtracs.ALL.list.v04r00.csv" # 2018 storm data
+#    crosswalkFile = dataDir + \
+#        'IBTrACS_SerialNumber_NameMapping_v04r00_20191006.txt'
+    h2AtlRaw = dataDir + "/natlData.csv"     # HURDAT2 North Atlantic Data
+    h2nepacRaw = dataDir + "/nepacData.csv" # HURDAT2 NE North Pacific Data
+    ibRaw = dataDir + "/ibtracsData.csv" # 2018 storm data
+    crosswalkFile = dataDir + "/nameMapping.txt"
+    resultsDir = workDir + "/Results/AllRpts/"  #  Location for final results
 
 
 """ Create the needed Results directory if it doesn't exist """
@@ -331,6 +335,40 @@ def getCat(nature, wind):
 #==============================================================================
 """------------------------END OF getCat-------------------------------"""
 
+""" getWindPres function to find none NaN wind and pressure in data """
+def getWindPres(values):
+    windSpd = ' ' # Default to missing value
+    pressure = ' ' # Default to missing value
+
+    # Wind columns in order of number of observations in IBTrACSv04r00
+    possibles = [23,    # USA
+                 129,   # DS824
+                 10,    # WMO
+                 57,    # CMA (China)
+                 134,   # TD9636
+                 144,   # Neumann
+                 62,    # HKO (Hong Kong)
+                 45,    # TOKYO
+                 95,    # BOM
+                 138,   # TD9635
+                 149,   # MLC
+                 75,    # REUNION (France)
+                 124,   # WELLINGTON (New Zealand)
+                 120,   # NADI (Fiji)
+                 67]    # NEWDELHI
+
+
+    for i in possibles:
+        if(values[i] != ' '): #Good data exists, use it
+            windSpd = values[i]
+            pressure = values[i+1]
+            break
+
+    return (windSpd, pressure)
+
+"""------------------------END OF getWindPres-------------------------------"""
+
+
 """ Create needed Objects """
 class Storm(object):
     def __init__(self,uid,name):
@@ -365,13 +403,13 @@ class Observation(object):
                 pass
         self.startLat = float(lat)
         self.startLon = float(lon)
-        if wsp == ' ':        # N.B. This is the IBTrACSv04 no data value
+        if wsp == ' ' or float(wsp) < 0 : # N.B. ' ' is the IBTrACSv04 no data value
             self.wsp = float(-1.0)
 #            self.wsp = float('NaN') #try NaN for missing wind speeds:
 #            NAN not working with graphing portion of web site.  Go back to -1 as flag
         else:
             self.wsp = float(wsp)
-        if pres == ' ':
+        if pres == ' ' or float(pres) < 0:
             self.pres = float(-1.0)
         else:
             self.pres = float(pres)
@@ -430,6 +468,12 @@ for i, file in enumerate(ibFiles):
          previously provided as a 'CSC' version of the IBTrACSv03 data. """
          print(vals)
 
+         """ Parse vals() to find non-null wind and pressure values from
+             appropriate preporting agency """
+
+         tmpWind, tmpPres = getWindPres(vals)
+
+
          """ Create first storm """
          thisStorm = Storm(vals[0],          # Unique IBTrACS ID
                            vals[5].strip())  # Name, spaces removed
@@ -439,10 +483,10 @@ for i, file in enumerate(ibFiles):
                                vals[9], # Lon
 #                               vals[23], # USA_Wind speed Was [10]
 #                               vals[24], # USA_Pressure
-                               vals[10], # USA_Wind speed Was [10]
-                               vals[11], # USA_Pressure
+                               tmpWind, # Wind from best estimate
+                               tmpPres, # Pressure from non-missing
                                vals[7] ) # Nature
-         
+
          observation.startLon = observation.startLon if observation.startLon <= 180.0 else observation.startLon - 360.
          thisStorm.segs.append(observation)
          thisStorm.startTime = observation.time
@@ -471,13 +515,14 @@ for i, file in enumerate(ibFiles):
              else: # Data read: Parse it and test to see if it is a new storm
                  vals = lineVals.split(",")
                  if vals[0] == thisStorm.uid :  # Same storm so add the record
+                     tmpWind, tmpPres = getWindPres(vals)
                      observation = Segment(vals[6],  # ISO 8601 Time
                                            vals[8], # Lat
                                            vals[9], # Lon
 #                                           vals[23], # USA_Wind speed Was [10]
 #                                           vals[24], # USA_Pressure
-                                           vals[10], # USA_Wind speed Was [10]
-                                           vals[11], # USA_Pressure
+                                           tmpWind, # Wind from best estimate
+                                           tmpPres, # Pressure from non-missing
                                            vals[7] ) # Nature
                      observation.startLon = observation.startLon if observation.startLon <= 180.0 else observation.startLon - 360.
                      ibHour = observation.time.hour*100+observation.time.minute
@@ -519,13 +564,14 @@ for i, file in enumerate(ibFiles):
                      thisStorm = Storm(vals[0],          # Unique IBTrACS ID
                                        vals[5].strip())  # Name, spaces removed
                      """ Add the first segment information to the storm """
+                     tmpWind, tmpPres = getWindPres(vals)
                      observation = Segment(vals[6],  # ISO 8601 Time
                                            vals[8], # Lat
                                            vals[9], # Lon
 #                                           vals[23], # USA_Wind speed Was [10]
 #                                           vals[24], # USA_Pressure
-                                           vals[10], # USA_Wind speed Was [10]
-                                           vals[11], # USA_Pressure
+                                           tmpWind, # Wind from best estimate
+                                           tmpPres, # Pressure from non-missing
                                            vals[7] ) # Nature
                      observation.startLon = observation.startLon if observation.startLon <= 180.0 else observation.startLon - 360.
                      thisStorm.segs.append(observation)
@@ -946,9 +992,9 @@ stormFields = [['STRMTRKOID','N','10'],
 #==============================================================================
 """ Create and initalize the fields for the needed Tracks Shapefiles """
 #goodTracks = shapefile.Writer(shapefile.POLYLINE) #One line & record per storm
-goodTracks = shapefile.Writer(goodStormFileName, shapeType = 'POLYLINE') #One line & record per storm
+goodTracks = shapefile.Writer(goodStormFileName) #One line & record per storm
 goodTracks.autobalance = 1 # make sure all shapes have records
-missingTracks = shapefile.Writer(missingStormFileName, shapeType = 'POLYLINE') #One line & record per storm
+missingTracks = shapefile.Writer(missingStormFileName) #, shapeType = 3) #One line & record per storm
 missingTracks.autobalance = 1 # make sure all shapes have records
 for attribute in stormFields:
     goodTracks.field(attribute[0],attribute[1],attribute[2]) # Add Fields
@@ -978,9 +1024,9 @@ segmentFields = [['SEGMNTOID','N','10'],
                  ['EndLon','C','20']]
 
 """ Create and initalize the fields for the needed Tracks Shapefiles """
-goodSegments = shapefile.Writer(goodSegmentFileName, shapeType = 'POLYLINE') # New shapefile
+goodSegments = shapefile.Writer(goodSegmentFileName) #, shapeType = 3) # New shapefile
 goodSegments.autoBalance = 1 # make sure all shapes have records
-missingSegments = shapefile.Writer(missingSegmentFileName, shapeType = 'POLYLINE') # New shapefile
+missingSegments = shapefile.Writer(missingSegmentFileName) #, shapeType = 3) # New shapefile
 missingSegments.autoBalance = 1 # make sure all shapes have records
 for attribute in segmentFields: # Add Fields for track shapefile
     goodSegments.field(attribute[0],attribute[1],attribute[2])
@@ -1121,8 +1167,7 @@ for i, storm in enumerate(allStorms):
 
 
         """ Add this segment's data to the appropriate segments shapefile """
-#        if goodStorm:
-        if True:
+        if goodStorm:
             goodSegCoords.append(segCoords)
             goodSegParams.append([segmentOID,     # Storm Object ID,
                            storm.uid,           # Storm ID
@@ -1222,8 +1267,7 @@ for i, storm in enumerate(allStorms):
     endObDate = dt.datetime.strftime(storm.endTime,'%Y%m%d')
     """   --------  End of Extra fields   ------------    """
     """ Append track to appropriate stormTracks list """
-#    if goodStorm:
-    if True:
+    if goodStorm:
         numGoodObs += 1
         goodTracks.line(trackCoords ) # Add the shape
         goodTracks.record(stormOID,     # Storm Object ID,
