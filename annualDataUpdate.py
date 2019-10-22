@@ -37,7 +37,7 @@ import stormReportDownload # Local python module
 SCRAMBLE = True
 WEBMERC = False
 BREAK180 = True
-OMIT_PROVISIONAL = True
+OMIT_PROVISIONAL = False
 TESTING = True
 
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
@@ -56,7 +56,7 @@ dupRange = 5
 """---------- DEFINE WORKING DIRECTORIES AND FILE NAMES --------------------"""
 workDir = "C:/temp/HHT/new/" 
 dataDir = workDir + "data/"
-resultsDir = workDir + "results/ibTestMix5/"
+resultsDir = workDir + "results/ibTestAll2/"
 """ Create the needed Results directory if it doesn't exist """
 if( not os.path.isdir(resultsDir) ):
     try:
@@ -140,6 +140,32 @@ else:
     """--------------------------------------------------------------------"""
 
 
+""" Get Crosswalk table to use to replace HURDAT2 filenames with IBTrACS
+    names to construct links for Storm Data Pages frum
+    http://ibtracs.unca.edu/index.php?name=...
+"""
+
+ibName = {}
+with open(nameMappingFile, 'r') as cwFile:
+     while True: # With this and the below break, read to EOF
+         lineVals = cwFile.readline()
+         if not lineVals: # Finds EOF
+             break # Break on EOF
+         else: # Data read: Parse it and test to see if it is a new storm
+             vals = lineVals.split()
+             if "multiple" in lineVals:
+                 """ When storms are in multiple basins, use the ATCF IDs,
+                 NOTE BENE: there can be more than one! """
+                 atcfID = [s for s in vals if "atcf" in s]
+                 for thisID in (atcfID):
+                     thisKey = thisID[:-6]
+                     ibName[thisKey] = vals[0].strip()
+             elif "hurdat" in lineVals:
+                 ibName[vals[1]] = vals[0].strip()
+#                 print(vals, "\n ibName[",vals[1],"] is ", vals[0],"\n",
+#                       ibName[vals[1]])#
+
+
 """ Get data for ENSO stage for each segment by referencing year and
  month against data set at:
  http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt
@@ -158,10 +184,7 @@ rptLookup = stormReportDownload.rptDict()
 Missing=[None, None]
 
 """ Processing functions """
-#"""--------------------------------------------------------------------"""
-#def getStormReport(name,year):
-#    return "no report"
-"""--------------------------------------------------------------------"""
+
 def getCat(nature, wind):
     """ This function returns the appropriate classification of
     Saffir-Simpson scale or other classification given the reported
@@ -251,47 +274,30 @@ def getCat(nature, wind):
 def getWindPres(values):
     windSpd = ' ' # Default to missing value
     pressure = ' ' # Default to missing value
-    
-    possibles = [10, 23, 144, 149, 95, 75, 45, 57, 62, 67, 120, 124]
+
+    # Wind columns in order of number of observations in IBTrACSv04r00
+    possibles = [23,    # USA
+                 129,   # DS824
+                 10,    # WMO
+                 57,    # CMA (China)
+                 134,   # TD9636
+                 144,   # Neumann
+                 62,    # HKO (Hong Kong)
+                 45,    # TOKYO
+                 95,    # BOM
+                 138,   # TD9635
+                 149,   # MLC 
+                 75,    # REUNION (France)
+                 124,   # WELLINGTON (New Zealand)
+                 120,   # NADI (Fiji)
+                 67]    # NEWDELHI
+                 
     
     for i in possibles:
         if(values[i] != ' '): #Good data exists, use it
             windSpd = values[i]
             pressure = values[i+1]
             break
-            
-
-    
-#    if(not np.isnan(int(values[10])) ):            # First test WMO
-#        windSpd = int(values[10])
-#        pressure = int(values[11])
-#    elif (not np.isnanint((values[23])) ):      # Next use USA
-#        windSpd = int(values[23])
-#        pressure = int(values[24])
-# =============================================================================
-#     if(values[10] != ' ' ):            # First test WMO
-#         windSpd = (values[10])
-#         pressure = (values[11])
-#     elif (values[23] != ' ' ):      # Next use USA
-#         windSpd = (values[23])
-#         pressure = (values[24])
-#     elif (values[144] != ' ' ):      # Neumann
-#         windSpd = (values[144])
-#         pressure = (values[145])
-#     elif (values[149] != ' ' ):      # Chenowith
-#         windSpd = (values[149])
-#         pressure = (values[150])
-#     elif (values[45] != ' ' ):      # Tokyo
-#         windSpd = (values[45])
-#         pressure = (values[46])
-#     elif (values[57] != ' ' ):      # China
-#         windSpd = (values[57])
-#         pressure = (values[58])
-#     else:
-#         windSpd = ' '
-#         pressure = ' '
-# =============================================================================
-        
         
     return (windSpd, pressure)         
                 
@@ -333,13 +339,13 @@ class Observation(object):
                 pass
         self.startLat = float(lat)
         self.startLon = float(lon)
-        if wsp == ' ':        # N.B. This is the IBTrACSv04 no data value
+        if wsp == ' ' or float(wsp) < 0 : # N.B. ' ' is the IBTrACSv04 no data value
             self.wsp = float(-1.0)
 #            self.wsp = float('NaN') #try NaN for missing wind speeds:
 #            NAN not working with graphing portion of web site.  Go back to -1 as flag
         else:
             self.wsp = float(wsp)
-        if pres == ' ':
+        if pres == ' ' or float(pres) < 0:
             self.pres = float(-1.0)
         else:
             self.pres = float(pres)
@@ -557,6 +563,17 @@ for i, file in enumerate(hFiles):
             #print ("vals = ",vals[0],vals[1],vals[2], len(vals))
             thisStorm = Storm(vals[0],  # Create new storm using Unique ID
                               vals[1].strip())  # and Name w/out spaces
+
+            """ If this storm has an IBTrACS ID, use it instead.
+            NOTE BENE: The IBTrACS crosswalk file prepends a "b" on to the
+            HURDAT2 (and other) id values.  Therefore, we need to prepend that
+            in the test below. """
+            testUID = 'b'+thisStorm.uid.lower()
+            if (testUID) in ibName:
+#                print('Swapping IDs! HURDAT ID, ',thisStorm.uid,
+#                      ', IBTrACS ID, ', ibName[testUID])
+                thisStorm.uid = ibName[testUID].strip()
+
             thisStorm.numSegs =  int(vals[2])    # Number of Observations
             thisStorm.source = i + 1 # Flag data source as HURDAT ATL or NEPAC
             thisStorm.basin = hBasin[i]
