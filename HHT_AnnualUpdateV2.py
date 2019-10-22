@@ -114,7 +114,7 @@ else:
     h2nepacRaw = dataDir + "/nepacData.csv" # HURDAT2 NE North Pacific Data
     ibRaw = dataDir + "/ibtracsData.csv" # 2018 storm data
     crosswalkFile = dataDir + "/nameMapping.txt"
-    resultsDir = workDir + "/Results/AllRpts/"  #  Location for final results
+    resultsDir = workDir + "/Results/Update10222019/"  #  Location for final results
 
 
 """ Create the needed Results directory if it doesn't exist """
@@ -246,10 +246,7 @@ with open(crosswalkFile, 'r') as cwFile:
 #                       ibName[vals[1]])#
 
 """ Processing functions """
-#"""--------------------------------------------------------------------"""
-#def getStormReport(name,year):
-#    return "no report"
-"""--------------------------------------------------------------------"""
+
 def getCat(nature, wind):
     """ This function returns the appropriate classification of
     Saffir-Simpson scale or other classification given the reported
@@ -481,8 +478,6 @@ for i, file in enumerate(ibFiles):
          observation = Segment(vals[6],  # ISO 8601 Time
                                vals[8], # Lat
                                vals[9], # Lon
-#                               vals[23], # USA_Wind speed Was [10]
-#                               vals[24], # USA_Pressure
                                tmpWind, # Wind from best estimate
                                tmpPres, # Pressure from non-missing
                                vals[7] ) # Nature
@@ -519,8 +514,6 @@ for i, file in enumerate(ibFiles):
                      observation = Segment(vals[6],  # ISO 8601 Time
                                            vals[8], # Lat
                                            vals[9], # Lon
-#                                           vals[23], # USA_Wind speed Was [10]
-#                                           vals[24], # USA_Pressure
                                            tmpWind, # Wind from best estimate
                                            tmpPres, # Pressure from non-missing
                                            vals[7] ) # Nature
@@ -545,7 +538,7 @@ for i, file in enumerate(ibFiles):
                      else:
                          """ Only keep the storm if there is more than ONE observation: """
                          if(thisStorm.numSegs > 1):
-                             # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
+                           # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
                              if(thisStorm.basin[0:2] != "NA" and thisStorm.basin[0:2] != "EP"):
                                  allStorms.append(thisStorm) # Add old storm to allStorms
         #                         print("IBTrACS basin",thisStorm.basin)
@@ -568,8 +561,6 @@ for i, file in enumerate(ibFiles):
                      observation = Segment(vals[6],  # ISO 8601 Time
                                            vals[8], # Lat
                                            vals[9], # Lon
-#                                           vals[23], # USA_Wind speed Was [10]
-#                                           vals[24], # USA_Pressure
                                            tmpWind, # Wind from best estimate
                                            tmpPres, # Pressure from non-missing
                                            vals[7] ) # Nature
@@ -645,6 +636,7 @@ for i, file in enumerate(hFiles):
             #print ("vals = ",vals[0],vals[1],vals[2], len(vals))
             thisStorm = Storm(vals[0],  # Create new storm using Unique ID
                               vals[1].strip())  # and Name w/out spaces
+
             """ If this storm has an IBTrACS ID, use it instead.
             NOTE BENE: The IBTrACS crosswalk file prepends a "b" on to the
             HURDAT2 (and other) id values.  Therefore, we need to prepend that
