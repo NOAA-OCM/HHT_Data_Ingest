@@ -56,7 +56,7 @@ dupRange = 5
 """---------- DEFINE WORKING DIRECTORIES AND FILE NAMES --------------------"""
 workDir = "C:/temp/HHT/new/"
 dataDir = workDir + "data/"
-resultsDir = workDir + "results/ibTestAll2/"
+resultsDir = workDir + "results/COnsistencyTest/"
 """ Create the needed Results directory if it doesn't exist """
 if( not os.path.isdir(resultsDir) ):
     try:
@@ -426,7 +426,7 @@ for i, file in enumerate(ibFiles):
          thisStorm.startLon = observation.startLon
          thisStorm.startLat = observation.startLat
          if(LABEL_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
-         thisStorm.name = thisStorm.name + " " \
+             thisStorm.name = thisStorm.name + " " \
                  + thisStorm.startTime.strftime('%Y') \
                  + "(P)"
              print("Labeling as provisional: ", thisStorm.name )
@@ -509,7 +509,7 @@ for i, file in enumerate(ibFiles):
                      thisStorm.startLat = observation.startLat
                      # enter end time in case this is only observation.
                      if(LABEL_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
-                     thisStorm.name = thisStorm.name + " " \
+                         thisStorm.name = thisStorm.name + " " \
                              + thisStorm.startTime.strftime('%Y') \
                              + "(P)"
                          print("Labeling as provisional: ", thisStorm.name )
@@ -638,7 +638,7 @@ for i, file in enumerate(hFiles):
             thisStorm.startLat = thisStorm.segs[0].startLat
             #thisStorm.name = thisStorm.name +" "+ thisStorm.startTime[:4]
             if(LABEL_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
-            thisStorm.name = thisStorm.name + " " \
+                thisStorm.name = thisStorm.name + " " \
                      + thisStorm.startTime.strftime('%Y') \
                      + "(P)"
                 print("Labeling as provisional: ", thisStorm.name )
