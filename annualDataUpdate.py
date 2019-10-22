@@ -5,9 +5,9 @@ Created on Sat Oct 12 15:26:41 2019
 @author: Dave Eslinger
          dave.eslinger@noaa.gov
          2019-10-12: Not working yet
-         
-Processes HURDAT2 and IBTrACS data sets and formats for Historical Hurricane 
-Tracks web site. 
+
+Processes HURDAT2 and IBTrACS data sets and formats for Historical Hurricane
+Tracks web site.
 
 New version using Pandas and modular approach for cloud deployment.
 
@@ -38,7 +38,8 @@ SCRAMBLE = True
 WEBMERC = False
 BREAK180 = True
 OMIT_PROVISIONAL = False
-TESTING = True
+LABEL_PROVISIONAL = True
+TESTING = False
 
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
@@ -52,9 +53,8 @@ NO391521 = True
 use_HURDAT = True
 dupRange = 5
 
-
 """---------- DEFINE WORKING DIRECTORIES AND FILE NAMES --------------------"""
-workDir = "C:/temp/HHT/new/" 
+workDir = "C:/temp/HHT/new/"
 dataDir = workDir + "data/"
 resultsDir = workDir + "results/ibTestAll2/"
 """ Create the needed Results directory if it doesn't exist """
@@ -108,7 +108,7 @@ hBasin = ["NA","EP"]
 
 
 
-""" Define EPSG code for needed projection. 
+""" Define EPSG code for needed projection.
 """
 if WEBMERC:
     earthRadius = 6378137.0
@@ -140,11 +140,28 @@ else:
     """--------------------------------------------------------------------"""
 
 
+""" Get data for ENSO stage for each segment by referencing year and
+ month against data set at:
+ http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt
+ For more information on the ENSO index, check out the CPC pages at:
+ http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ensoyears.shtml
+ http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_change.shtml
+         """
+""" Get dictionary of ENSO state by YYYY-MM key """
+ensoLookup = {}
+ensoLookup = ensoDownload.ensoDict(dataDir)
+""" Get NHC Storm reports for HURDAT storms from:
+             http://www.nhc.noaa.gov/TCR_StormReportsIndex.xml (DLE)
+"""
+rptLookup = {}
+rptLookup = stormReportDownload.rptDict()
+Missing=[None, None]
+
 """ Get Crosswalk table to use to replace HURDAT2 filenames with IBTrACS
     names to construct links for Storm Data Pages frum
     http://ibtracs.unca.edu/index.php?name=...
 """
-
+detailsBaseURL = "http://ibtracs.unca.edu/index.php?name=v04r00-"
 ibName = {}
 with open(nameMappingFile, 'r') as cwFile:
      while True: # With this and the below break, read to EOF
@@ -164,24 +181,6 @@ with open(nameMappingFile, 'r') as cwFile:
                  ibName[vals[1]] = vals[0].strip()
 #                 print(vals, "\n ibName[",vals[1],"] is ", vals[0],"\n",
 #                       ibName[vals[1]])#
-
-
-""" Get data for ENSO stage for each segment by referencing year and
- month against data set at:
- http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt
- For more information on the ENSO index, check out the CPC pages at:
- http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ensoyears.shtml
- http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/ONI_change.shtml
-         """
-""" Get dictionary of ENSO state by YYYY-MM key """
-ensoLookup = {}
-ensoLookup = ensoDownload.ensoDict(dataDir)
-""" Get NHC Storm reports for HURDAT storms from:
-             http://www.nhc.noaa.gov/TCR_StormReportsIndex.xml (DLE)
-"""
-rptLookup = {}
-rptLookup = stormReportDownload.rptDict()
-Missing=[None, None]
 
 """ Processing functions """
 
@@ -286,23 +285,22 @@ def getWindPres(values):
                  45,    # TOKYO
                  95,    # BOM
                  138,   # TD9635
-                 149,   # MLC 
+                 149,   # MLC
                  75,    # REUNION (France)
                  124,   # WELLINGTON (New Zealand)
                  120,   # NADI (Fiji)
                  67]    # NEWDELHI
-                 
-    
+
+
     for i in possibles:
         if(values[i] != ' '): #Good data exists, use it
             windSpd = values[i]
             pressure = values[i+1]
             break
-        
-    return (windSpd, pressure)         
-                
+
+    return (windSpd, pressure)
+
 """------------------------END OF getWindPres-------------------------------"""
-            
 
 
 """ Create needed Objects """
@@ -359,6 +357,10 @@ class Segment(Observation):
         self.saffir = ""
         self.enso = None
 
+
+""" Main processing begins here   """
+
+
 """ Create an empty list to hold allStorms
     and initialize the total storm counter """
 allStorms = []
@@ -368,8 +370,6 @@ ibProvisional = 0
 numAllMissing = 0
 numSinglePoint = 0
 numGoodObs = 0
-
-
 
 """ Read IBTrACS data
     This data is not split by storms, rather every row has all info in it
@@ -399,16 +399,16 @@ for i, file in enumerate(ibFiles):
          vals = lineVals.split(",")
          """ The vals used has changed with V04r00.  See pdf documentationon
          IBTrACS website for all the possibilites.  We will be using the 'USA'
-         values for winds and pressure that should be similar to what was 
+         values for winds and pressure that should be similar to what was
          previously provided as a 'CSC' version of the IBTrACSv03 data. """
 #         print(vals)
-         
+
          """ Parse vals() to find non-null wind and pressure values from
              appropriate preporting agency """
-            
-         tmpWind, tmpPres = getWindPres(vals)            
-         
-         
+
+         tmpWind, tmpPres = getWindPres(vals)
+
+
          """ Create first storm """
          thisStorm = Storm(vals[0],          # Unique IBTrACS ID
                            vals[5].strip())  # Name, spaces removed
@@ -416,17 +416,24 @@ for i, file in enumerate(ibFiles):
          observation = Segment(vals[6],  # ISO 8601 Time
                                vals[8], # Lat
                                vals[9], # Lon
-#                               vals[23], # USA_Wind speed Was [10]
-#                               vals[24], # USA_Pressure
                                tmpWind, # Wind from best estimate
                                tmpPres, # Pressure from non-missing
                                vals[7] ) # Nature
+
+         observation.startLon = observation.startLon if observation.startLon <= 180.0 else observation.startLon - 360.
          thisStorm.segs.append(observation)
          thisStorm.startTime = observation.time
          thisStorm.startLon = observation.startLon
          thisStorm.startLat = observation.startLat
+         if(LABEL_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
          thisStorm.name = thisStorm.name + " " \
+                 + thisStorm.startTime.strftime('%Y') \
+                 + "(P)"
+             print("Labeling as provisional: ", thisStorm.name )
+         else:
+             thisStorm.name = thisStorm.name + " " \
              + thisStorm.startTime.strftime('%Y')
+
          # enter end time in case this is only observation.
          thisStorm.endTime = observation.time
          print(thisStorm.startTime)
@@ -441,15 +448,14 @@ for i, file in enumerate(ibFiles):
              else: # Data read: Parse it and test to see if it is a new storm
                  vals = lineVals.split(",")
                  if vals[0] == thisStorm.uid :  # Same storm so add the record
-                     tmpWind, tmpPres = getWindPres(vals)            
+                     tmpWind, tmpPres = getWindPres(vals)
                      observation = Segment(vals[6],  # ISO 8601 Time
                                            vals[8], # Lat
                                            vals[9], # Lon
-#                                           vals[23], # USA_Wind speed Was [10]
-#                                           vals[24], # USA_Pressure
                                            tmpWind, # Wind from best estimate
                                            tmpPres, # Pressure from non-missing
                                            vals[7] ) # Nature
+                     observation.startLon = observation.startLon if observation.startLon <= 180.0 else observation.startLon - 360.
                      ibHour = observation.time.hour*100+observation.time.minute
                      if NO391521 and (ibHour == 300 or ibHour == 900 or
                                       ibHour == 1500 or ibHour == 2100):
@@ -464,9 +470,9 @@ for i, file in enumerate(ibFiles):
                          save storm appropriately """
                      if (OMIT_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
                          # Add old storm to provisionalStorms
-                         ibProvisional += 1                           
-#                         print('Provisional storm ', ibProvisional)
-                         provisionalStorms.append(thisStorm) 
+                         ibProvisional += 1
+                         print('Provisional storm ', ibProvisional)
+                         provisionalStorms.append(thisStorm)
                      else:
                          """ Only keep the storm if there is more than ONE observation: """
                          if(thisStorm.numSegs > 1):
@@ -489,21 +495,26 @@ for i, file in enumerate(ibFiles):
                      thisStorm = Storm(vals[0],          # Unique IBTrACS ID
                                        vals[5].strip())  # Name, spaces removed
                      """ Add the first segment information to the storm """
-                     tmpWind, tmpPres = getWindPres(vals)            
+                     tmpWind, tmpPres = getWindPres(vals)
                      observation = Segment(vals[6],  # ISO 8601 Time
                                            vals[8], # Lat
                                            vals[9], # Lon
-#                                           vals[23], # USA_Wind speed Was [10]
-#                                           vals[24], # USA_Pressure
                                            tmpWind, # Wind from best estimate
                                            tmpPres, # Pressure from non-missing
                                            vals[7] ) # Nature
+                     observation.startLon = observation.startLon if observation.startLon <= 180.0 else observation.startLon - 360.
                      thisStorm.segs.append(observation)
                      thisStorm.startTime = observation.time
                      thisStorm.startLon = observation.startLon
                      thisStorm.startLat = observation.startLat
                      # enter end time in case this is only observation.
+                     if(LABEL_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
                      thisStorm.name = thisStorm.name + " " \
+                             + thisStorm.startTime.strftime('%Y') \
+                             + "(P)"
+                         print("Labeling as provisional: ", thisStorm.name )
+                     else:
+                         thisStorm.name = thisStorm.name + " " \
                          + thisStorm.startTime.strftime('%Y')
                      thisStorm.endTime = observation.time
                      nseg = 1 # New storm ready for next record
@@ -514,9 +525,9 @@ for i, file in enumerate(ibFiles):
          """ Only keep the storm if there is more than ONE observation: """
          if (OMIT_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
              # Add old storm to provisionalStorms
-             ibProvisional += 1                           
+             ibProvisional += 1
              print('Provisional storm ', ibProvisional)
-             provisionalStorms.append(thisStorm) 
+             provisionalStorms.append(thisStorm)
          else:
              if(thisStorm.numSegs > 1):
                  # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
@@ -525,7 +536,7 @@ for i, file in enumerate(ibFiles):
                  else:
                      ibSkipNum += 1
              else:
-                 numSinglePoint += 1   
+                 numSinglePoint += 1
              ibNum += 1 # Increment counter for IBTrACS storms
     #==============================================================================
     #      print("Last IBTrACS storm # ",ibNum," named ",thisStorm.name,
@@ -626,7 +637,13 @@ for i, file in enumerate(hFiles):
             thisStorm.startLon = thisStorm.segs[0].startLon
             thisStorm.startLat = thisStorm.segs[0].startLat
             #thisStorm.name = thisStorm.name +" "+ thisStorm.startTime[:4]
+            if(LABEL_PROVISIONAL & (vals[13] == 'PROVISIONAL') ):
             thisStorm.name = thisStorm.name + " " \
+                     + thisStorm.startTime.strftime('%Y') \
+                     + "(P)"
+                print("Labeling as provisional: ", thisStorm.name )
+            else:
+                thisStorm.name = thisStorm.name + " " \
                  + thisStorm.startTime.strftime('%Y')
             thisStorm.endTime = thisStorm.segs[len(thisStorm.segs)-1].time
             """ Only keep the storm if there is more than ONE observation: """
@@ -881,7 +898,7 @@ for i, storm in enumerate(allStorms):
 #==============================================================================
 
 """ ==========================================================================
-    Got all data ready, now initialize and write out spatial objects 
+    Got all data ready, now initialize and write out spatial objects
     with geopandas and shapely
 ==========================================================================="""
 
@@ -911,6 +928,7 @@ stormFields = [['STRMTRKOID','N','10'],
                ['Min_Press','N','10'],
                ['StrmRptURL','C','254'],
                ['In10sOrder','N','10'], # End of Previous Attributes
+               ['DetailsURL','C','254'],
                ['NumObs','C','10'],
                ['ENSO','C','10']]
 #==============================================================================
@@ -919,7 +937,7 @@ stormFields = [['STRMTRKOID','N','10'],
 #==============================================================================
 """ Create and initalize the fields for the needed Tracks Shapefiles """
 #goodTracks = shapefile.Writer(shapefile.POLYLINE) #One line & record per storm
-goodTracks = shapefile.Writer(goodStormFileName) #, shapeType = 3) #One line & record per storm
+goodTracks = shapefile.Writer(goodStormFileName) #One line & record per storm
 goodTracks.autobalance = 1 # make sure all shapes have records
 missingTracks = shapefile.Writer(missingStormFileName) #, shapeType = 3) #One line & record per storm
 missingTracks.autobalance = 1 # make sure all shapes have records
@@ -932,7 +950,7 @@ for attribute in stormFields:
 segmentFields = [['SEGMNTOID','N','10'],
                  ['STORMID','C','58'],
                  ['MaxWindSpd','N','9'],
-                 ['BeginObHr','C','9'],
+                 ['BeginObHr','N','9'],
                  ['BeginLat','C','10'],  # Why C?  Is that character? Need a float!
                  ['BeginLon','C','10'],
                  ['Min_Press','C','10'],
@@ -944,7 +962,7 @@ segmentFields = [['SEGMNTOID','N','10'],
                  ['DispDate','C','20'],
                  ['DMin_Press','C','10'],
                  ['DDateNTime','C','20'],
-                 ['Segment_ID','C','12'],#End of previous attributes
+                 ['SegmntOrdr','N','12'],#End of previous attributes
                  ['Nature','C','20'],
                  ['ENSO','C','20'],
                  ['EndLat','C','20'],
@@ -1161,6 +1179,7 @@ for i, storm in enumerate(allStorms):
     """ Extra values to match old (pre-2015) database structure """
 #    basin = rptLookup.setdefault(storm.name,Missing)[1]
     rptURL = rptLookup.setdefault(storm.name,Missing)[0]
+    detailsURL = detailsBaseURL + storm.uid
     strmStart = storm.segs[0].time
     strmEnd = storm.segs[len(storm.segs)-1].time
 
@@ -1213,6 +1232,7 @@ for i, storm in enumerate(allStorms):
                        rptURL,          # Storm Report URL
                        intensOrder,        # Intensity Order (numeric)
                        # Extra Attributes below
+                       detailsURL,          # Storm Report URL
                        storm.numSegs,   # Number of segments in this Track
                        storm.enso)      # ENSO Flag
     else:
@@ -1235,6 +1255,7 @@ for i, storm in enumerate(allStorms):
                        rptURL,          # Storm Report URL
                        intensOrder,        # Intensity Order (numeric)
                        # Extra Attributes below
+                       detailsURL,          # Storm Report URL
                        storm.numSegs,   # Number of segments in this Track
                        storm.enso)      # ENSO Flag
     """ Append the names and the begin and end years to lists so that
