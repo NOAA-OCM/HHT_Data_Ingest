@@ -17,15 +17,15 @@ New version using Pandas and modular approach for cloud deployment.
 import os
 import sys
 #import pandas as pd
-import numpy as np
+#import numpy as np
 import math
 import random
 import json
 import datetime as dt
 import shapefile
-import geopandas as gpd
-from shapely.geometry import MultiLineString
-
+#import geopandas as gpd
+#from shapely.geometry import MultiLineString
+import configparser
 
 """  These next two packages are custom packages for this progam.  They
     should be in the same directory as HHT_Annualupdate
@@ -33,31 +33,37 @@ from shapely.geometry import MultiLineString
 import ensoDownload # Local python module
 import stormReportDownload # Local python module
 
-""" Declarations and Parameters """
-SCRAMBLE = True
-WEBMERC = False
-BREAK180 = True
-OMIT_PROVISIONAL = False
-LABEL_PROVISIONAL = True
-TESTING = False
+""" Declarations and Parameters from Configuration file"""
+config = configparser.ConfigParser()
+config.read('./config.ini')
+
+
+SCRAMBLE = config.getboolean('PARAMETERS','SCRAMBLE')
+WEBMERC = config.getboolean('PARAMETERS','WEBMERC')
+BREAK180 = config.getboolean('PARAMETERS','BREAK180')
+OMIT_PROVISIONAL = config.getboolean('PARAMETERS','OMIT_PROVISIONAL')
+LABEL_PROVISIONAL = config.getboolean('PARAMETERS','LABEL_PROVISIONAL')
+TESTING = config.getboolean('PARAMETERS','TESTING')
 
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
     reporting groups and give the dashed black-colored zig zag look to many
     tracks in the Indian Ocean. """
-NO391521 = True
+NO391521 = config.getboolean('PARAMETERS','NO391521')
 
 """ Choose to use either HURDAT2 data as the 'base' data layer (a new
     behaviour) or to use IBTrACS as the 'base' depending on the
     use_HURDAT variable: """
-use_HURDAT = True
-dupRange = 5
+USE_HURDAT = config.getboolean('PARAMETERS','USE_HURDAT')
+#dupRange = config.getint('PARAMETERS','DUPRANGE')
 
 """---------- DEFINE WORKING DIRECTORIES AND FILE NAMES --------------------"""
-workDir = "C:/temp/HHT/new/"
-dataDir = workDir + "data/"
-resultsDir = workDir + "results/COnsistencyTest/"
-""" Create the needed Results directory if it doesn't exist """
+workDir = config.get('DIRECTORIES','WORKDIR')
+dataDir = config.get('DIRECTORIES','DATA')
+resultsDir = config.get('DIRECTORIES','RESULTS')
+logDir = config.get('DIRECTORIES','RESULTS_LOG')
+
+""" Create the needed Results and Logs directories if needed """
 if( not os.path.isdir(resultsDir) ):
     try:
         os.makedirs(resultsDir, exist_ok=True)
@@ -68,17 +74,24 @@ if( not os.path.isdir(resultsDir) ):
 else:
     print("Results directory already exists")
 
+if( not os.path.isdir(logDir) ):
+    try:
+        os.makedirs(logDir, exist_ok=True)
+    except:
+        sys.exit("Creation of results directory failed")
+    else:
+        print("Log directory successfully created")
+else:
+    print("Log directory already exists")
+
 # File names
-logFile = dataDir + "update.log"
-natlFile = dataDir + "natlData.csv"
-nepacFile = dataDir + "nepacData.csv"
-ibtracsFile = dataDir + "ibtracsData.csv"
-nameMappingFile = dataDir + "nameMapping.txt"
+logFileName = logDir + "/update.log"
+natlFileName = dataDir + "/natlData.csv"
+nepacFileName = dataDir + "/nepacData.csv"
+ibtracsFileName = dataDir + "/ibtracsData.csv"
+nameMappingFile = dataDir + "/nameMapping.txt"
 
 
-""" Adding an ingest.log ascii file to record QA/QC results in the Results
-    directory. """
-logFileName = resultsDir + "ingest.log"
 logFile = open(logFileName,'w')
 
 """ Define output shapefile names """
@@ -102,7 +115,7 @@ yearsJSON = resultsDir + '/hurricaneYears.json'
 
 """ Specify what HURDAT years to run.  If hFIles is empty, then skip HURDAT
     (ONLY USED FOR TESTING IBTrACS SPECIFIC CODE) """
-hFiles = [natlFile, nepacFile]
+hFiles = [natlFileName, nepacFileName]
 hBasin = ["NA","EP"]
 #hFiles = []
 
@@ -381,7 +394,7 @@ numGoodObs = 0
     We know the IBTrACS data starts with 3 header rows, then the 4th row
     is our first legitimate data record.
     Initialize the first thisStorm object from that"""
-ibFiles = [ibtracsFile]
+ibFiles = [ibtracsFileName]
 #ibFiles = []
 ibNum = 0 # Initialize IBTrACS storm counter,
           # it will increment when storm end is found
@@ -389,7 +402,7 @@ ibSkipNum = 0  # Number of NA and EP storms skipped to prevent HURDAT2 duplicate
 for i, file in enumerate(ibFiles):
 #    print (i, file)
 #    print ('IBTrACS file: ', file)
-    with open(ibtracsFile, "r") as rawObsFile:
+    with open(ibtracsFileName, "r") as rawObsFile:
          head1 = rawObsFile.readline()
          head2 = rawObsFile.readline()
          head3 = rawObsFile.readline()
@@ -476,13 +489,13 @@ for i, file in enumerate(ibFiles):
                      else:
                          """ Only keep the storm if there is more than ONE observation: """
                          if(thisStorm.numSegs > 1):
-                             # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
-                             if(thisStorm.basin[0:2] != "NA" and thisStorm.basin[0:2] != "EP"):
-                                 allStorms.append(thisStorm) # Add old storm to allStorms
-        #                         print("IBTrACS basin",thisStorm.basin)
-                             else:
-                                 ibSkipNum += 1
-        #                         print("Duplicate in basin",thisStorm.basin)
+#                             # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
+#                             if(thisStorm.basin[0:2] != "NA" and thisStorm.basin[0:2] != "EP"):
+                             allStorms.append(thisStorm) # Add old storm to allStorms
+#        #                         print("IBTrACS basin",thisStorm.basin)
+#                             else:
+#                                 ibSkipNum += 1
+#        #                         print("Duplicate in basin",thisStorm.basin)
                          else:
                              numSinglePoint += 1
                          ibNum += 1 # Increment counter for IBTrACS storms
@@ -530,11 +543,11 @@ for i, file in enumerate(ibFiles):
              provisionalStorms.append(thisStorm)
          else:
              if(thisStorm.numSegs > 1):
-                 # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
-                 if(thisStorm.basin[0:2] != "NA" and thisStorm.basin[0:2] != "EP"):
-                     allStorms.append(thisStorm) # Add old storm to allStorms
-                 else:
-                     ibSkipNum += 1
+#                 # Skip storms in NA or EP to prevent duplicates with HURDAT2 12/12/2016
+#                 if(thisStorm.basin[0:2] != "NA" and thisStorm.basin[0:2] != "EP"):
+                 allStorms.append(thisStorm) # Add old storm to allStorms
+#                 else:
+#                     ibSkipNum += 1
              else:
                  numSinglePoint += 1
              ibNum += 1 # Increment counter for IBTrACS storms
@@ -662,131 +675,169 @@ for i, file in enumerate(hFiles):
 """ End of HURDAT2 Ingest"""
 
 """ Sort combined storms and keep unique ones
-    Use sotrm.source field to pick either HURDAT or IBTrACS storms
-    based on value of use_HURDAT boolean """
+    Use storm.source field to pick either HURDAT or IBTrACS storms
+    based on value of use_HURDAT boolean 
 
-allSorted = sorted(allStorms, key = lambda storm: storm.startTime)
+    With new IBTrACS crosswalk file to replace HURDAT2 storm ids with IBTrACS 
+    storm ids, we can sort on those instead of names (which don't work well)
+    
+    Can now sort on UID and only need to check successive storms for duplicates
+    """
+
+allSorted = sorted(allStorms, key = lambda storm: storm.uid)
 
 allStorms = [] # Clear allStorms variable to use for unique storms
 allStorms.append(allSorted[0]) # Add first storm to the non-duplicate list
-nDups = 0
+
+nUnique = 1 # Initialize number of unique storms
+nDups = 0   # Initialize number of duplicate storms
+dupIndex = nUnique-1 # Index of last added storm.  Only need to check this storm.
 
 for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
-#    print('i =',i)
-    """ Compare current Storm to dupRange of previously identified "good"
-        storms in the AllStorms list """
-    isDuplicate = False # intialize the flag for this storm
-    dupIndex = None
-    """ Iterate from end of allStorms, backward by dupRange records, or just
-        to the length of allStorms, whichever is shortest """
-    lastGood = len(allStorms)-1
-    for j in range(lastGood,lastGood-min(dupRange, lastGood),-1 ):
-        """ To find a duplicate name, use the .find method for stings.
-        This will return a value of '-1' if the string is not found.
-        NOTE: The IBtRACS names are frequently combinations of names
-        from multiple reporting Centers.
-        Therefore, we need to do this check for both 'directions' and
-        if we add the results, we should get '-2' for no duplicates"""
-#==============================================================================
-#         sameName = ( allSorted[i].name.find(allStorms[j].name)
-#                  + allStorms[j].name.find(allSorted[i].name)  )
-#==============================================================================
-        """ Check data sources.  If they are not IBTrACS vs HURDAT, then
-            the storms are not duplicates.
-            N.B.: This assumes no intra-dataset duplicates, which seems true.
-            **** ALERT *** The above assumption is incorrect.  IBTrACS has
-            many self-duplicates.  We now check with those and remove duplicates
-            unless they are in different basins. 5/31/2016 DLE """
-        if(allSorted[i].source == allStorms[j].source):
-            continue # These are from different basins so are not duplicates
-
-        """ There can be duplicates in IBTrACS (and also Hurdat), so need to
-        check all storms no matter the source.  However, storms from different
-        basins should not be duplicates, so check for that, since those can
-        meet the other duplicate requirements, e.g., LIN and CAROLINE."""
-
-        """ Now I'm not so sure about the duplicates w/in data sets.
-            Many identified are not duplicates, they start too far apart.
-            DLE 12/21/2016   """
-        if(allSorted[i].basin != allStorms[j].basin):
-            continue # These are from different basins so are not duplicates
-
-        """ Check names, but omit the year from the search string.
-            We omit the year to be able to search for the names as substrings
-            within each other.  The name is just appended on and will confuse
-            the search logic. """
-        AsortedName = allSorted[i].name[:len(allSorted[i].name)-5]
-        AallName =  allStorms[j].name[:len(allStorms[j].name)-5]
-#        AXsortedName = allSorted[i].name[:len(allSorted[i].name)-0]
-#        AXallName =  allStorms[j].name[:len(allStorms[j].name)-0]
-        AallInSorted = AsortedName.find(AallName)
-        AsortedInAll =  AallName.find(AsortedName)
-        if AallInSorted + AsortedInAll != -2: # Duplicate names found
-            """ First check that BASINS are the same.  Unfortunately,
-            there are duplicate storm names in the same year, but in different
-            BASINS, esp. for the North Atlantic and Western Pacific in the
-            late 1970s"""
-            if (allSorted[i].basin != allStorms[j].basin):
-                # The basins are different, so not duplicates. CONTINUE to next j loop
-                continue
-            if ( allSorted[i].name.find("NAME") != -1 or
-                 allSorted[i].name.find("KNOWN") != -1 ):
-                 """ Unnamed storms are common so check for identical
-                     start times.  If different, they are different
-                     storms so CONTINUE to next j loop """
-                 if allSorted[i].startTime != allStorms[j].startTime:
-                     continue #different start time, not true duplicates
-            nDups += 1
-            isDuplicate = True
-            dupIndex = j
-            break
-
-    if isDuplicate:
-        logFile.write('Duplicate set ' + str(nDups) + ' found! \n' +
-               'Source\tUID\t\tName\t\tStart Date\t\tBasin\tLon\tLat\n' +
-               str(allSorted[i].source) +"\t"+ str(allSorted[i].uid) +"\t"+
-               allSorted[i].name +"\t"+
-               str(allSorted[i].startTime) +"\t"+
-               str(allSorted[i].basin) +"\t"+
-               str(allSorted[i].startLon) +"\t"+
-               str(allSorted[i].startLat) + ' and \n' +
-               str(allStorms[dupIndex].source) +"\t"+
-               str(allStorms[dupIndex].uid) +"\t"+
-               allStorms[dupIndex].name +"\t"+
-               str(allStorms[dupIndex].startTime) +"\t"+
-               str(allStorms[dupIndex].basin) +"\t"+
-               str(allStorms[dupIndex].startLon) +"\t"+
-               str(allStorms[dupIndex].startLat) + "\n")
-        if use_HURDAT:
-             if allSorted[i].source > 0: #This is a HURDAT record so replace old one
-                """ NOTE BENE: If choosing HURDAT over IBTrACS, then replace
-                the Unique idenitifier with the IBTrACS ID.  That is needed
-                for the Storm Details lookup from the IBTrACS web site!
-                DLE 6/13/2016 """
-                allSorted[i].uid = allStorms[dupIndex].uid #replace w/ IBTrACS UID
+    if(allSorted[i].uid == allStorms[dupIndex].uid ):
+        # Duplicate so pick according to USE_HURDAT flag
+        if USE_HURDAT:
+            if allSorted[i].source > 0: #This is a HURDAT record so replace old one
                 allStorms[dupIndex] = allSorted[i]
-#                allStorms[dupIndex].uid = IBTrACS_uid #And replace HURDAT one with it
-             else: # The existing allStorm record is HURDAT, so keep it
-                 pass
+            else: # The existing allStorm record is HURDAT, so keep it
+                pass
         else: # Want to use IBTrACS for duplicates
             if allSorted[i].source > 0: #The new record is HURDAT, so skip it
                 pass
             else: # The existing allStorm record is HURDAT, so replace it
-                # Check for duplicates w/in IBTrACS and use dup w/ longer name
-                if allSorted[i].source == allSorted[dupIndex].source:
-                    """Pick the storm with the most names assigned to it.
-                       This is so that it will show up in searches with any
-                       of its potential names.  Also, these tend to be storms
-                       with the longer tracks since they are reported by a
-                       larger number of reporting groups. """
-                    """ STILL NEEDS to Be FIXED """
-                    pass
-                else:
-                    allStorms[dupIndex] = allSorted[i]
-
-    else: # not a duplicate, so copy it to allStorms
+                allStorms[dupIndex] = allSorted[i]
+        nDups = nDups + 1
+    else: # not a duplicate, so add it to allStorms and increment nDups
         allStorms.append(allSorted[i])
-
+        dupIndex = nUnique                                         
+        nUnique = nUnique + 1
+                                                 
+# =============================================================================
+# """ Sort by start time and use Storm Name field to ID duplicates """
+#
+# allSorted = sorted(allStorms, key = lambda storm: storm.startTime)
+#
+# allStorms = [] # Clear allStorms variable to use for unique storms
+# allStorms.append(allSorted[0]) # Add first storm to the non-duplicate list
+# nDups = 0
+#
+# for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
+# #    print('i =',i)
+#     """ Compare current Storm to dupRange of previously identified "good"
+#         storms in the AllStorms list """
+#     isDuplicate = False # intialize the flag for this storm
+#     dupIndex = None
+#     """ Iterate from end of allStorms, backward by dupRange records, or just
+#         to the length of allStorms, whichever is shortest """
+#     lastGood = len(allStorms)-1
+#     for j in range(lastGood,lastGood-min(dupRange, lastGood),-1 ):
+#         """ To find a duplicate name, use the .find method for stings.
+#         This will return a value of '-1' if the string is not found.
+#         NOTE: The IBtRACS names are frequently combinations of names
+#         from multiple reporting Centers.
+#         Therefore, we need to do this check for both 'directions' and
+#         if we add the results, we should get '-2' for no duplicates"""
+# #==============================================================================
+# #         sameName = ( allSorted[i].name.find(allStorms[j].name)
+# #                  + allStorms[j].name.find(allSorted[i].name)  )
+# #==============================================================================
+#         """ Check data sources.  If they are not IBTrACS vs HURDAT, then
+#             the storms are not duplicates.
+#             N.B.: This assumes no intra-dataset duplicates, which seems true.
+#             **** ALERT *** The above assumption is incorrect.  IBTrACS has
+#             many self-duplicates.  We now check with those and remove duplicates
+#             unless they are in different basins. 5/31/2016 DLE """
+#         if(allSorted[i].source == allStorms[j].source):
+#             continue # These are from different basins so are not duplicates
+# 
+#         """ There can be duplicates in IBTrACS (and also Hurdat), so need to
+#         check all storms no matter the source.  However, storms from different
+#         basins should not be duplicates, so check for that, since those can
+#         meet the other duplicate requirements, e.g., LIN and CAROLINE."""
+# 
+#         """ Now I'm not so sure about the duplicates w/in data sets.
+#             Many identified are not duplicates, they start too far apart.
+#             DLE 12/21/2016   """
+#         if(allSorted[i].basin != allStorms[j].basin):
+#             continue # These are from different basins so are not duplicates
+# 
+#         """ Check names, but omit the year from the search string.
+#             We omit the year to be able to search for the names as substrings
+#             within each other.  The name is just appended on and will confuse
+#             the search logic. """
+#         AsortedName = allSorted[i].name[:len(allSorted[i].name)-5]
+#         AallName =  allStorms[j].name[:len(allStorms[j].name)-5]
+# #        AXsortedName = allSorted[i].name[:len(allSorted[i].name)-0]
+# #        AXallName =  allStorms[j].name[:len(allStorms[j].name)-0]
+#         AallInSorted = AsortedName.find(AallName)
+#         AsortedInAll =  AallName.find(AsortedName)
+#         if AallInSorted + AsortedInAll != -2: # Duplicate names found
+#             """ First check that BASINS are the same.  Unfortunately,
+#             there are duplicate storm names in the same year, but in different
+#             BASINS, esp. for the North Atlantic and Western Pacific in the
+#             late 1970s"""
+#             if (allSorted[i].basin != allStorms[j].basin):
+#                 # The basins are different, so not duplicates. CONTINUE to next j loop
+#                 continue
+#             if ( allSorted[i].name.find("NAME") != -1 or
+#                  allSorted[i].name.find("KNOWN") != -1 ):
+#                  """ Unnamed storms are common so check for identical
+#                      start times.  If different, they are different
+#                      storms so CONTINUE to next j loop """
+#                  if allSorted[i].startTime != allStorms[j].startTime:
+#                      continue #different start time, not true duplicates
+#             nDups += 1
+#             isDuplicate = True
+#             dupIndex = j
+#             break
+# 
+#     if isDuplicate:
+#         logFile.write('Duplicate set ' + str(nDups) + ' found! \n' +
+#                'Source\tUID\t\tName\t\tStart Date\t\tBasin\tLon\tLat\n' +
+#                str(allSorted[i].source) +"\t"+ str(allSorted[i].uid) +"\t"+
+#                allSorted[i].name +"\t"+
+#                str(allSorted[i].startTime) +"\t"+
+#                str(allSorted[i].basin) +"\t"+
+#                str(allSorted[i].startLon) +"\t"+
+#                str(allSorted[i].startLat) + ' and \n' +
+#                str(allStorms[dupIndex].source) +"\t"+
+#                str(allStorms[dupIndex].uid) +"\t"+
+#                allStorms[dupIndex].name +"\t"+
+#                str(allStorms[dupIndex].startTime) +"\t"+
+#                str(allStorms[dupIndex].basin) +"\t"+
+#                str(allStorms[dupIndex].startLon) +"\t"+
+#                str(allStorms[dupIndex].startLat) + "\n")
+#         if use_HURDAT:
+#              if allSorted[i].source > 0: #This is a HURDAT record so replace old one
+#                 """ NOTE BENE: If choosing HURDAT over IBTrACS, then replace
+#                 the Unique idenitifier with the IBTrACS ID.  That is needed
+#                 for the Storm Details lookup from the IBTrACS web site!
+#                 DLE 6/13/2016 """
+#                 allSorted[i].uid = allStorms[dupIndex].uid #replace w/ IBTrACS UID
+#                 allStorms[dupIndex] = allSorted[i]
+# #                allStorms[dupIndex].uid = IBTrACS_uid #And replace HURDAT one with it
+#              else: # The existing allStorm record is HURDAT, so keep it
+#                  pass
+#         else: # Want to use IBTrACS for duplicates
+#             if allSorted[i].source > 0: #The new record is HURDAT, so skip it
+#                 pass
+#             else: # The existing allStorm record is HURDAT, so replace it
+#                 # Check for duplicates w/in IBTrACS and use dup w/ longer name
+#                 if allSorted[i].source == allSorted[dupIndex].source:
+#                     """Pick the storm with the most names assigned to it.
+#                        This is so that it will show up in searches with any
+#                        of its potential names.  Also, these tend to be storms
+#                        with the longer tracks since they are reported by a
+#                        larger number of reporting groups. """
+#                     """ STILL NEEDS to Be FIXED """
+#                     pass
+#                 else:
+#                     allStorms[dupIndex] = allSorted[i]
+# 
+#     else: # not a duplicate, so copy it to allStorms
+#         allStorms.append(allSorted[i])
+# 
+# =============================================================================
 """ -------------------- All storms are now unique -------------------- """
 
 """ Now process unique storms for QA/QC and finding Saffir-Simpson value """
@@ -902,14 +953,16 @@ for i, storm in enumerate(allStorms):
     with geopandas and shapely
 ==========================================================================="""
 
-""" Create Empty geodataframes """
-tracks = gpd.GeoDataFrame()
-segments = gpd.GeoDataFrame()
-
-# Add geometry column
-tracks['geometry'] = None
-segments['geometry'] = None
-
+# =============================================================================
+# """ Create Empty geodataframes """
+# tracks = gpd.GeoDataFrame()
+# segments = gpd.GeoDataFrame()
+# 
+# # Add geometry column
+# tracks['geometry'] = None
+# segments['geometry'] = None
+# 
+# =============================================================================
 #Check this link out: http://geopandas.org/mergingdata.html
 
 stormFields = [['STRMTRKOID','N','10'],

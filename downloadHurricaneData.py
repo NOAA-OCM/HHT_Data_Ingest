@@ -27,16 +27,19 @@ import requests
 from bs4 import BeautifulSoup
 #import ftplib
 import urllib
+import configparser
 
-""" Data locations, filenames, etc. """
+""" Declarations and Parameters from Configuration file"""
+config = configparser.ConfigParser()
+config.read('./config.ini')
+
 # URLs for data:
-hurdatDir = "https://www.nhc.noaa.gov"
-ibtracsDir = 'https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r00/access/csv/'
-#print(ibtracsDir)
+hurdatDir = config.get('DOWNLOAD','HURDAT2')
+ibtracsDir = config.get('DOWNLOAD','IBTRACS')
 
 # Location and file names to store downloaded data:
-dataDir = "C:/temp/HHT_2018/data"
-dataDir = "./data"
+dataDir = config.get('DIRECTORIES','DATA')
+logDir = config.get('DIRECTORIES','DOWNLOAD_LOG')
 if( not os.path.isdir(dataDir) ):
     try:
         os.makedirs(dataDir, exist_ok = True)
@@ -54,8 +57,8 @@ nepacFile = dataDir + "/nepacData.csv"
 ibtracsFile = dataDir + "/ibtracsData.csv"
 nameMappingFile = dataDir + "/nameMapping.txt"
 
-ibDataPattern = "ibtracs.ALL"
-ibNamesPattern = "NameMapping"
+ibDataPattern = config.get('DOWNLOAD','IBDATAPATTERN')
+ibNamesPattern = config.get('DOWNLOAD','IBNAMESPATTERN')
 
 """ Initialize log file """
 log  = open(logFile, mode = "a")
