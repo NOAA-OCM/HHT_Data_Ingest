@@ -30,8 +30,8 @@ import configparser
 """  These next two packages are custom packages for this progam.  They
     should be in the same directory as HHT_Annualupdate
     """
-import ensoDownload # Local python module
-import stormReportDownload # Local python module
+import loadENSODict # Local python module
+import loadStormReportDict # Local python module
 
 """ Declarations and Parameters from Configuration file"""
 config = configparser.ConfigParser()
@@ -44,6 +44,7 @@ BREAK180 = config.getboolean('PARAMETERS','BREAK180')
 OMIT_PROVISIONAL = config.getboolean('PARAMETERS','OMIT_PROVISIONAL')
 LABEL_PROVISIONAL = config.getboolean('PARAMETERS','LABEL_PROVISIONAL')
 TESTING = config.getboolean('PARAMETERS','TESTING')
+FLAG_BAD = config.getboolean('PARAMETERS','FLAG_BAD')
 
 """ If NO391521 is True, then omit obs at 03:00, 09:00, 15:00 and 21:00 from IBTrACS.
     These appear to be poor quality (DLE's observation) records from different
@@ -55,7 +56,6 @@ NO391521 = config.getboolean('PARAMETERS','NO391521')
     behaviour) or to use IBTrACS as the 'base' depending on the
     use_HURDAT variable: """
 USE_HURDAT = config.getboolean('PARAMETERS','USE_HURDAT')
-#dupRange = config.getint('PARAMETERS','DUPRANGE')
 
 """---------- DEFINE WORKING DIRECTORIES AND FILE NAMES --------------------"""
 workDir = config.get('DIRECTORIES','WORKDIR')
@@ -96,15 +96,11 @@ logFile = open(logFileName,'w')
 
 """ Define output shapefile names """
 if WEBMERC:
-    goodSegmentFileName = resultsDir+'/goodSegments_WebMerc'
-    goodStormFileName = resultsDir+'/goodTracks_WebMerc'
-    missingSegmentFileName = resultsDir+'/missingSegments_WebMerc'
-    missingStormFileName = resultsDir+'/missingTracks_WebMerc'
+    goodSegmentFileName = resultsDir+'/Segments_WebMerc'
+    goodStormFileName = resultsDir+'/Tracks_WebMerc'
 else:
-     goodSegmentFileName = resultsDir+'/goodSegments_WGS84'
-     goodStormFileName = resultsDir+'/goodTracks_WGS84'
-     missingSegmentFileName = resultsDir+'/missingSegments_WGS84'
-     missingStormFileName = resultsDir+'/missingTracks_WGS84'
+     goodSegmentFileName = resultsDir+'/Segments_WGS84'
+     goodStormFileName = resultsDir+'/Tracks_WGS84'
 
 
 """ Define JSON filenames """
@@ -162,12 +158,12 @@ else:
          """
 """ Get dictionary of ENSO state by YYYY-MM key """
 ensoLookup = {}
-ensoLookup = ensoDownload.ensoDict(dataDir)
+ensoLookup = loadENSODict.ensoDict()
 """ Get NHC Storm reports for HURDAT storms from:
              http://www.nhc.noaa.gov/TCR_StormReportsIndex.xml (DLE)
 """
 rptLookup = {}
-rptLookup = stormReportDownload.rptDict()
+rptLookup = loadStormReportDict.rptDict()
 Missing=[None, None]
 
 """ Get Crosswalk table to use to replace HURDAT2 filenames with IBTrACS
@@ -712,140 +708,16 @@ for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
         dupIndex = nUnique                                         
         nUnique = nUnique + 1
                                                  
-# =============================================================================
-# """ Sort by start time and use Storm Name field to ID duplicates """
-#
-# allSorted = sorted(allStorms, key = lambda storm: storm.startTime)
-#
-# allStorms = [] # Clear allStorms variable to use for unique storms
-# allStorms.append(allSorted[0]) # Add first storm to the non-duplicate list
-# nDups = 0
-#
-# for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
-# #    print('i =',i)
-#     """ Compare current Storm to dupRange of previously identified "good"
-#         storms in the AllStorms list """
-#     isDuplicate = False # intialize the flag for this storm
-#     dupIndex = None
-#     """ Iterate from end of allStorms, backward by dupRange records, or just
-#         to the length of allStorms, whichever is shortest """
-#     lastGood = len(allStorms)-1
-#     for j in range(lastGood,lastGood-min(dupRange, lastGood),-1 ):
-#         """ To find a duplicate name, use the .find method for stings.
-#         This will return a value of '-1' if the string is not found.
-#         NOTE: The IBtRACS names are frequently combinations of names
-#         from multiple reporting Centers.
-#         Therefore, we need to do this check for both 'directions' and
-#         if we add the results, we should get '-2' for no duplicates"""
-# #==============================================================================
-# #         sameName = ( allSorted[i].name.find(allStorms[j].name)
-# #                  + allStorms[j].name.find(allSorted[i].name)  )
-# #==============================================================================
-#         """ Check data sources.  If they are not IBTrACS vs HURDAT, then
-#             the storms are not duplicates.
-#             N.B.: This assumes no intra-dataset duplicates, which seems true.
-#             **** ALERT *** The above assumption is incorrect.  IBTrACS has
-#             many self-duplicates.  We now check with those and remove duplicates
-#             unless they are in different basins. 5/31/2016 DLE """
-#         if(allSorted[i].source == allStorms[j].source):
-#             continue # These are from different basins so are not duplicates
-# 
-#         """ There can be duplicates in IBTrACS (and also Hurdat), so need to
-#         check all storms no matter the source.  However, storms from different
-#         basins should not be duplicates, so check for that, since those can
-#         meet the other duplicate requirements, e.g., LIN and CAROLINE."""
-# 
-#         """ Now I'm not so sure about the duplicates w/in data sets.
-#             Many identified are not duplicates, they start too far apart.
-#             DLE 12/21/2016   """
-#         if(allSorted[i].basin != allStorms[j].basin):
-#             continue # These are from different basins so are not duplicates
-# 
-#         """ Check names, but omit the year from the search string.
-#             We omit the year to be able to search for the names as substrings
-#             within each other.  The name is just appended on and will confuse
-#             the search logic. """
-#         AsortedName = allSorted[i].name[:len(allSorted[i].name)-5]
-#         AallName =  allStorms[j].name[:len(allStorms[j].name)-5]
-# #        AXsortedName = allSorted[i].name[:len(allSorted[i].name)-0]
-# #        AXallName =  allStorms[j].name[:len(allStorms[j].name)-0]
-#         AallInSorted = AsortedName.find(AallName)
-#         AsortedInAll =  AallName.find(AsortedName)
-#         if AallInSorted + AsortedInAll != -2: # Duplicate names found
-#             """ First check that BASINS are the same.  Unfortunately,
-#             there are duplicate storm names in the same year, but in different
-#             BASINS, esp. for the North Atlantic and Western Pacific in the
-#             late 1970s"""
-#             if (allSorted[i].basin != allStorms[j].basin):
-#                 # The basins are different, so not duplicates. CONTINUE to next j loop
-#                 continue
-#             if ( allSorted[i].name.find("NAME") != -1 or
-#                  allSorted[i].name.find("KNOWN") != -1 ):
-#                  """ Unnamed storms are common so check for identical
-#                      start times.  If different, they are different
-#                      storms so CONTINUE to next j loop """
-#                  if allSorted[i].startTime != allStorms[j].startTime:
-#                      continue #different start time, not true duplicates
-#             nDups += 1
-#             isDuplicate = True
-#             dupIndex = j
-#             break
-# 
-#     if isDuplicate:
-#         logFile.write('Duplicate set ' + str(nDups) + ' found! \n' +
-#                'Source\tUID\t\tName\t\tStart Date\t\tBasin\tLon\tLat\n' +
-#                str(allSorted[i].source) +"\t"+ str(allSorted[i].uid) +"\t"+
-#                allSorted[i].name +"\t"+
-#                str(allSorted[i].startTime) +"\t"+
-#                str(allSorted[i].basin) +"\t"+
-#                str(allSorted[i].startLon) +"\t"+
-#                str(allSorted[i].startLat) + ' and \n' +
-#                str(allStorms[dupIndex].source) +"\t"+
-#                str(allStorms[dupIndex].uid) +"\t"+
-#                allStorms[dupIndex].name +"\t"+
-#                str(allStorms[dupIndex].startTime) +"\t"+
-#                str(allStorms[dupIndex].basin) +"\t"+
-#                str(allStorms[dupIndex].startLon) +"\t"+
-#                str(allStorms[dupIndex].startLat) + "\n")
-#         if use_HURDAT:
-#              if allSorted[i].source > 0: #This is a HURDAT record so replace old one
-#                 """ NOTE BENE: If choosing HURDAT over IBTrACS, then replace
-#                 the Unique idenitifier with the IBTrACS ID.  That is needed
-#                 for the Storm Details lookup from the IBTrACS web site!
-#                 DLE 6/13/2016 """
-#                 allSorted[i].uid = allStorms[dupIndex].uid #replace w/ IBTrACS UID
-#                 allStorms[dupIndex] = allSorted[i]
-# #                allStorms[dupIndex].uid = IBTrACS_uid #And replace HURDAT one with it
-#              else: # The existing allStorm record is HURDAT, so keep it
-#                  pass
-#         else: # Want to use IBTrACS for duplicates
-#             if allSorted[i].source > 0: #The new record is HURDAT, so skip it
-#                 pass
-#             else: # The existing allStorm record is HURDAT, so replace it
-#                 # Check for duplicates w/in IBTrACS and use dup w/ longer name
-#                 if allSorted[i].source == allSorted[dupIndex].source:
-#                     """Pick the storm with the most names assigned to it.
-#                        This is so that it will show up in searches with any
-#                        of its potential names.  Also, these tend to be storms
-#                        with the longer tracks since they are reported by a
-#                        larger number of reporting groups. """
-#                     """ STILL NEEDS to Be FIXED """
-#                     pass
-#                 else:
-#                     allStorms[dupIndex] = allSorted[i]
-# 
-#     else: # not a duplicate, so copy it to allStorms
-#         allStorms.append(allSorted[i])
-# 
-# =============================================================================
+
 """ -------------------- All storms are now unique -------------------- """
 
 """ Now process unique storms for QA/QC and finding Saffir-Simpson value """
-#==============================================================================
-# """ Make a list of all the Nature types. Needed for setting up enso logic"""
-# allNatures = []
-# """ Make lists for names and years.  Needed for JSON files used by HHT site."""
-#==============================================================================
+# =============================================================================
+# """ Make a list of all the Nature types. Needed for setting up Category logic"""
+#  allNatures = []
+# 
+# =============================================================================
+""" Make lists for names and years.  Needed for JSON files used by HHT site."""
 stormNames = []
 stormYears = []
 #for i, storm in enumerate(allStorms[11700:11802:4]):
@@ -992,11 +864,8 @@ stormFields = [['STRMTRKOID','N','10'],
 #goodTracks = shapefile.Writer(shapefile.POLYLINE) #One line & record per storm
 goodTracks = shapefile.Writer(goodStormFileName) #One line & record per storm
 goodTracks.autobalance = 1 # make sure all shapes have records
-missingTracks = shapefile.Writer(missingStormFileName) #, shapeType = 3) #One line & record per storm
-missingTracks.autobalance = 1 # make sure all shapes have records
 for attribute in stormFields:
     goodTracks.field(attribute[0],attribute[1],attribute[2]) # Add Fields
-    missingTracks.field(attribute[0],attribute[1],attribute[2]) # Add Fields
 
 
 """ For SEGMENTS : """
@@ -1024,21 +893,14 @@ segmentFields = [['SEGMNTOID','N','10'],
 """ Create and initalize the fields for the needed Tracks Shapefiles """
 goodSegments = shapefile.Writer(goodSegmentFileName) #, shapeType = 3) # New shapefile
 goodSegments.autoBalance = 1 # make sure all shapes have records
-missingSegments = shapefile.Writer(missingSegmentFileName) #, shapeType = 3) # New shapefile
-missingSegments.autoBalance = 1 # make sure all shapes have records
 for attribute in segmentFields: # Add Fields for track shapefile
     goodSegments.field(attribute[0],attribute[1],attribute[2])
-    missingSegments.field(attribute[0],attribute[1],attribute[2])
 """Lists needed for SCRAMBLING Segments """
 goodSegCoords = []
 goodSegParams = []
 goodSegNum = 0
 goodSegIndx = []
 
-missingSegCoords = []
-missingSegParams = []
-missingSegNum = 0
-missingSegIndx= []
 stormOID = 0 # Counter to make unique ID number for each storm
 segmentOID = 0 # Counter to make unique ID number for each segment
 
@@ -1046,11 +908,7 @@ for i, storm in enumerate(allStorms):
     stormOID = stormOID + 1
     basin = storm.basin
     trackCoords = [] # Create list for stormTracks shapefile
-    """ Find out if this hurricane has any valid pressure or wind speed obs """
-    if (float(storm.minP) < 0.0 and float(storm.maxW) < 0.0 ):
-        goodStorm = False
-    else:
-        goodStorm = True
+
     for thisSegment in storm.segs:
         segmentOID = segmentOID + 1
 
@@ -1165,57 +1023,31 @@ for i, storm in enumerate(allStorms):
 
 
         """ Add this segment's data to the appropriate segments shapefile """
-        if goodStorm:
-            goodSegCoords.append(segCoords)
-            goodSegParams.append([segmentOID,     # Storm Object ID,
-                           storm.uid,           # Storm ID
-                           thisSegment.wsp,     # Max. Sustained Wind
-                           begObsHour,          # Begin Observation Hour Why?
-                           thisSegment.startLat,# Begin Lat
-                           thisSegment.startLon,# Begin Long.
-                           thisSegment.pres,    # Min Pressure
-                           basin,               # Basin
-                           thisSegment.saffir,  # Saffir Simpson Scale
-                           dateTime,            # Date and Time
-                           thisSegment.wsp,     # Display Max. Sustained Wind
-                           storm.name,          # Display Storm Name
-                           dispDate,            # Display Date
-                           thisSegment.pres,    # Display Min Pressure
-                           dispDateTime,        # Display Date and Time
-                           goodSegNum,          # Segment Order, a unique ID
-                           # End of Previous Attributes
-                           thisSegment.nature,  # Nature (not quite SS)
-                           thisSegment.enso,    # ENSO Flag
-                           thisSegment.endLat,  # End Lat
-                           thisSegment.endLon] )  # End Long.
-            goodSegIndx.append(goodSegNum)
-            goodSegNum += 1
+        goodSegCoords.append(segCoords)
+        goodSegParams.append([segmentOID,     # Storm Object ID,
+                       storm.uid,           # Storm ID
+                       thisSegment.wsp,     # Max. Sustained Wind
+                       begObsHour,          # Begin Observation Hour Why?
+                       thisSegment.startLat,# Begin Lat
+                       thisSegment.startLon,# Begin Long.
+                       thisSegment.pres,    # Min Pressure
+                       basin,               # Basin
+                       thisSegment.saffir,  # Saffir Simpson Scale
+                       dateTime,            # Date and Time
+                       thisSegment.wsp,     # Display Max. Sustained Wind
+                       storm.name,          # Display Storm Name
+                       dispDate,            # Display Date
+                       thisSegment.pres,    # Display Min Pressure
+                       dispDateTime,        # Display Date and Time
+                       goodSegNum,          # Segment Order, a unique ID
+                       # End of Previous Attributes
+                       thisSegment.nature,  # Nature (not quite SS)
+                       thisSegment.enso,    # ENSO Flag
+                       thisSegment.endLat,  # End Lat
+                       thisSegment.endLon] )  # End Long.
+        goodSegIndx.append(goodSegNum)
+        goodSegNum += 1
 
-        else:
-            missingSegCoords.append(segCoords)
-            missingSegParams.append([segmentOID,     # Storm Object ID,
-                           storm.uid,           # Storm ID
-                           thisSegment.wsp,     # Max. Sustained Wind
-                           begObsHour,          # Begin Observation Hour Why?
-                           thisSegment.startLat,# Begin Lat
-                           thisSegment.startLon,# Begin Long.
-                           thisSegment.pres,    # Min Pressure
-                           basin,               # Basin
-                           thisSegment.saffir,  # Saffir Simpson Scale
-                           dateTime,            # Date and Time
-                           thisSegment.wsp,     # Display Max. Sustained Wind
-                           storm.name,          # Display Storm Name
-                           dispDate,            # Display Date
-                           thisSegment.pres,    # Display Min Pressure
-                           dispDateTime,        # Display Date and Time
-                         3000000+missingSegNum, # Segment Order, a unique ID
-                           # End of Previous Attributes
-                           thisSegment.nature,  # Nature (not quite SS)
-                           thisSegment.enso,    # ENSO Flag
-                           thisSegment.endLat,  # End Lat
-                           thisSegment.endLon] )  # End Long.
-            missingSegIndx.append(missingSegNum)
-            missingSegNum += 1
 
 #==============================================================================
 #     print(trackCoords)
@@ -1265,52 +1097,29 @@ for i, storm in enumerate(allStorms):
     endObDate = dt.datetime.strftime(storm.endTime,'%Y%m%d')
     """   --------  End of Extra fields   ------------    """
     """ Append track to appropriate stormTracks list """
-    if goodStorm:
-        numGoodObs += 1
-        goodTracks.line(trackCoords ) # Add the shape
-        goodTracks.record(stormOID,     # Storm Object ID,
-                       storm.uid,       # StormID
-                       storm.maxW,      # Max Sustained WInd, 1 min ave period
-                       basin,           # Basin
-                       storm.name,      # Display Storm Name
-                       dateRng,         # Display Date Range
-                       begObDate, # Begin Observation Date
-                       endObDate,   # End Observation Date
-                       storm.maxSaffir, # Display Saffir Simpson
-                       filtYrs,         # Filter Param. Years
-                       filtMons,        # Filter Param. Months
-                       filtClimReg,     # Filter Param. Climate Regions
-                       storm.maxSaffir, # Filter Param. Saffir Simpson 2 letter
-                       storm.minP,      # Filter Param: Minimum Pressure
-                       rptURL,          # Storm Report URL
-                       intensOrder,        # Intensity Order (numeric)
-                       # Extra Attributes below
-                       detailsURL,          # Storm Report URL
-                       storm.numSegs,   # Number of segments in this Track
-                       storm.enso)      # ENSO Flag
-    else:
-        numAllMissing += 1
-        missingTracks.line(trackCoords ) # Add the shape
-        missingTracks.record(stormOID,     # Storm Object ID,
-                       storm.uid,       # StormID
-                       storm.maxW,      # Max Sustained WInd, 1 min ave period
-                       basin,           # Basin
-                       storm.name,      # Display Storm Name
-                       dateRng,         # Display Date Range
-                       begObDate, # Begin Observation Date
-                       endObDate,   # End Observation Date
-                       storm.maxSaffir, # Display Saffir Simpson
-                       filtYrs,         # Filter Param. Years
-                       filtMons,        # Filter Param. Months
-                       filtClimReg,     # Filter Param. Climate Regions
-                       storm.maxSaffir, # Filter Param. Saffir Simpson 2 letter
-                       storm.minP,      # Filter Param: Minimum Pressure
-                       rptURL,          # Storm Report URL
-                       intensOrder,        # Intensity Order (numeric)
-                       # Extra Attributes below
-                       detailsURL,          # Storm Report URL
-                       storm.numSegs,   # Number of segments in this Track
-                       storm.enso)      # ENSO Flag
+    numGoodObs += 1
+    goodTracks.line(trackCoords ) # Add the shape
+    goodTracks.record(stormOID,     # Storm Object ID,
+                   storm.uid,       # StormID
+                   storm.maxW,      # Max Sustained WInd, 1 min ave period
+                   basin,           # Basin
+                   storm.name,      # Display Storm Name
+                   dateRng,         # Display Date Range
+                   begObDate, # Begin Observation Date
+                   endObDate,   # End Observation Date
+                   storm.maxSaffir, # Display Saffir Simpson
+                   filtYrs,         # Filter Param. Years
+                   filtMons,        # Filter Param. Months
+                   filtClimReg,     # Filter Param. Climate Regions
+                   storm.maxSaffir, # Filter Param. Saffir Simpson 2 letter
+                   storm.minP,      # Filter Param: Minimum Pressure
+                   rptURL,          # Storm Report URL
+                   intensOrder,        # Intensity Order (numeric)
+                   # Extra Attributes below
+                   detailsURL,          # Storm Report URL
+                   storm.numSegs,   # Number of segments in this Track
+                   storm.enso)      # ENSO Flag
+
     """ Append the names and the begin and end years to lists so that
         JSON files of the unique names and years can be created for use
         in the HHT web application """
@@ -1324,16 +1133,10 @@ for i, storm in enumerate(allStorms):
     Then populate Segments shapefile"""
 if (SCRAMBLE):
     random.shuffle(goodSegIndx)
-    random.shuffle(missingSegIndx)
 for i in goodSegIndx:
     tmp = goodSegCoords[i]
     goodSegments.line(goodSegCoords[i])
     goodSegments.record(*goodSegParams[i])
-
-for i in missingSegIndx:
-    tmp = missingSegCoords[i]
-    missingSegments.line(missingSegCoords[i])
-    missingSegments.record(*missingSegParams[i])
 
 
 """ Save shapefile """
@@ -1344,21 +1147,10 @@ prj1 = open("%s.prj" % goodSegmentFileName, "w")
 prj1.write(epsg)
 prj1.close()
 
-missingSegments.close()
-prj2 = open("%s.prj" % missingSegmentFileName, "w")
-prj2.write(epsg)
-prj2.close()
-
 goodTracks.close()
 prj3 = open("%s.prj" % goodStormFileName, "w")
 prj3.write(epsg)
 prj3.close()
-
-missingTracks.close()
-# create the PRJ file
-prj4 = open("%s.prj" % missingStormFileName, "w")
-prj4.write(epsg)
-prj4.close()
 
 """Create JSON/js files for unique storm names and unique years."""
 uniqueNames = sorted(list(set(stormNames)))
@@ -1379,24 +1171,18 @@ print("\n    All IBTrACS: {0}, Skipped NA and EP: {1}, Used: {2}".format(
         hstormNum[0], hstormNum[1]),
         "\nQA: TOTAL STORMS INGESTED = {0}\n".format(
         (ibNum-ibSkipNum)+hstormNum[0]+hstormNum[1]),
-        "    Single Obs storms removed: {0}, Multi-Obs storms kept: {1}"
+        "\nQA: Single Obs storms removed: {0}, Multi-Obs storms kept: {1}"
         .format(numSinglePoint,len(allSorted)),
-        "\nQA: STORMS LENGTH CHECKED = {0} \n(Should equal total ingested.)\n"
+        "\n    STORMS LENGTH CHECKED = {0} \n    (Should equal total ingested.)\n"
         .format(len(allSorted)+numSinglePoint),
-        "    Duplicate storms removed: {0}, Unique storms = {1}"
+        "\nQA: Duplicate storms removed: {0}, Unique storms = {1}"
         .format(nDups,len(allStorms)),
-        "\nQA: STORMS PROCESSED for DUPLICATES = {0}\n".format(
+        "\n    STORMS PROCESSED for DUPLICATES = {0}\n".format(
         nDups+len(allStorms)),
-        "    (This should equal number of Multi-obs storms.)")
-print ("    Storms with no wind or pressure:",numAllMissing,
-       ", Good storm tracks: ",numGoodObs,
-       "\nQA: STORMS CHECKED FOR WIND AND PRESSURE VALUES = {0}\n"
-       .format(numAllMissing+numGoodObs),
-        "    (This should equal number of UNIQUE storms.)\n")
-print("\n\nIf the above QA numbers are consistent, there will be ",
-      numGoodObs,'\nstorms in the "good" shapefiles,\n',
-      "and",numAllMissing,'storms in the "missing" shapefiles. \n',
-      'All should be ingested into the database for use on the HHT site.')
+        "   (This should equal number of Multi-obs storms.)")
+print ("\nQA: NO CHECK FOR MISSING WINDS AND PRESSURE")
+print("\n\nQA: If the above QA numbers are consistent, there will be " +
+              str(numGoodObs) + ' unique storms in the shapefiles')
 
 logFile.write("\n    All IBTrACS: "+str(ibNum) +
               " Skipped NA and EP: " + str(ibSkipNum) +
@@ -1405,23 +1191,18 @@ logFile.write("\n    All IBTrACS: "+str(ibNum) +
               " HURDAT2_NEPAC: " + str( hstormNum[1]) +
               "\nQA: TOTAL STORMS INGESTED (sum IBTracs USED and HURDAT2) = " +
               str(ibNum-ibSkipNum+hstormNum[0]+hstormNum[1]))
-logFile.write("\n    Single Obs storms removed: " + str(numSinglePoint) +
+logFile.write("\n\nQA: Single Obs storms removed: " + str(numSinglePoint) +
               " Multi-Obs storms kept: " + str(len(allSorted)) +
-              "\nQA: SUM OF STORMS LENGTH CHECKED = " + str(len(allSorted)+numSinglePoint) +
-              " (Should equal total ingested.)")
-logFile.write("\n    Duplicate storms removed: "+str(nDups) +
+              "\n    SUM OF STORMS LENGTH CHECKED = " + str(len(allSorted)+numSinglePoint) +
+              "\n    (Should equal total ingested.)")
+logFile.write("\n\nQA: Duplicate storms removed: "+str(nDups) +
               ", Unique storms = " + str(len(allStorms)) +
-              "\nQA: STORMS PROCESSED for DUPLICATES = " +
+              "\n    STORMS PROCESSED for DUPLICATES = " +
               str(nDups+len(allStorms)) +
-              "  (This should equal number of Multi-obs storms.)")
-logFile.write("\n    Storms with no wind or pressure: " + str(numAllMissing) +
-              ", Good storm tracks: " + str(numGoodObs) +
-              "\nQA: TOTAL STORMS CHECKED FOR WIND AND PRESSURE VALUES = " +
-              str(numAllMissing+numGoodObs) +
-              ", (This should equal number of UNIQUE storms.)\n")
-logFile.write("\nIf the above QA numbers are consistent, there will be " +
-              str(numGoodObs) + ' storms in the "good" shapefiles,\n' +
-      "and "+ str(numAllMissing) + ' storms in the "missing" shapefiles. \n' +
-      'All should be ingested into the database for use on the HHT site.')
+              "\n    (This should equal number of Multi-obs storms.)")
+logFile.write("\n\nQA: NO CHECK FOR MISSING WINDS AND PRESSURE")
+
+logFile.write("\n\nQA: If the above QA numbers are consistent, there will be " +
+              str(numGoodObs) + ' unique storms in the "good" shapefiles')
 
 logFile.close()

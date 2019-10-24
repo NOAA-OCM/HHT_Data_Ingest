@@ -36,6 +36,8 @@ config.read('./config.ini')
 # URLs for data:
 hurdatDir = config.get('DOWNLOAD','HURDAT2')
 ibtracsDir = config.get('DOWNLOAD','IBTRACS')
+ENSOURL = config.get('DOWNLOAD','ENSOURL')
+RPTURL = config.get('DOWNLOAD','RPTURL')
 
 # Location and file names to store downloaded data:
 dataDir = config.get('DIRECTORIES','DATA')
@@ -56,6 +58,8 @@ natlFile = dataDir + "/natlData.csv"
 nepacFile = dataDir + "/nepacData.csv"
 ibtracsFile = dataDir + "/ibtracsData.csv"
 nameMappingFile = dataDir + "/nameMapping.txt"
+ensoFile = dataDir + "/ensoData.txt"
+stormReportFile = dataDir + "/stormreportData.txt"
 
 ibDataPattern = config.get('DOWNLOAD','IBDATAPATTERN')
 ibNamesPattern = config.get('DOWNLOAD','IBNAMESPATTERN')
@@ -139,6 +143,26 @@ except:
 else:
     log.write("  " + hurdatFiles[1] + "\n")
 
+
+
+""" Storm Report Data Download """
+
+try:
+    urllib.request.urlretrieve(RPTURL,stormReportFile )
+except:
+    log.write("  Download failed for " + RPTURL + "\n")
+else:
+    log.write("  " + RPTURL + "\n")
+
+
+""" ENSO Data Download """
+
+try:
+    urllib.request.urlretrieve(ENSOURL,ensoFile )
+except:
+    log.write("  Download failed for " + ENSOURL + "\n")
+else:
+    log.write("  " + ENSOURL + "\n")
 
 log.write("\n")
 log.close()

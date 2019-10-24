@@ -18,9 +18,14 @@ https://docs.python.org/3.4/library/xml.etree.elementtree.html#module-xml.etree.
 
 import urllib.request
 import xml.etree.ElementTree as ET
+import configparser
 
 def rptDict():
-    rptURL = "http://www.nhc.noaa.gov/TCR_StormReportsIndex.xml"
+    """ Declarations and Parameters from Configuration file"""
+    config = configparser.ConfigParser()
+    config.read('./config.ini')
+    rptURL = config.get('DOWNLOAD','RPTURL')
+#    rptURL = "http://www.nhc.noaa.gov/TCR_StormReportsIndex.xml"
     file = urllib.request.urlopen(rptURL)
     data = file.read()
     file.close()
@@ -63,9 +68,9 @@ def rptDict():
 # 
 # =============================================================================
         
-""" This is the test code to simply run the rptDict function by itself 
-    It is not called when the program is included in another program. """        
 # =============================================================================
+# """ This is the test code to simply run the rptDict function by itself 
+#     It is not called when the program is included in another program. """        
 # foo = rptDict()
 # print (foo)
 # 

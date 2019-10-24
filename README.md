@@ -2,9 +2,11 @@
 
 This repository contains the programs and some test data used for updating the Historical Hurricane Tracks (HHT) web site, [https://coast.noaa.gov/hurricanes/](https://coast.noaa.gov/hurricanes/).  These programs will ingest and combine three different data sources: two HURDAT2 data files, one each for the North Atlantic and one for the  Northeastern Pacific, from the National Hurricane Centers [HURDAT2 data sets](https://www.nhc.noaa.gov/data/#hurdat), and one global data file from the [International Best Track Archive for Climate Stewardship (IBTrACS)](https://www.ncdc.noaa.gov/ibtracs/) data set, currently (September, 2019) at version [V04r00](https://www.ncdc.noaa.gov/ibtracs/index.php?name=ib-v4-access).  
 
-All data sets are downloaded manually as csv files.  The HHT_AnnualUpdateV2.py program is then updated with new file names and run.  It will create four different shapefiles, in two sets, one of storms with all data (prefixed with "Good_"), and one set for storms with missing wind and/or pressure information (prefixed with "Missing_").  Each set consists of a Tracks shapefile, containing one attributed polyline for each storm, and a Segments shapefile, containing many polylines per storm, where each line represents the track segment from one time observation up to the next one.
+The program now uses a configuration file, `config.ini` to set up all directories, URLs, etc.  In theory, this should be the only file that needs updating each year.  Change it as the first step in the update process. All data sets needed are then downloaded in step 2, with the `downloadHurricaneData.py` program.  They are all saved in a data directory specified in the configuration file.  Step 3 is to run `annualDataUpdate.py` program, which now creates just two different shapefiles,  a Tracks shapefile, containing one attributed polyline for each storm, and a Segments shapefile, containing many polylines per storm, where each line represents the track segment from one time observation up to the next one.  Storms that are missing all information about wind speed and Minimum Pressure are entered with all other storms.
 
-In the HHT data update process, these four shapefiles are then loaded into an SQL database of the Tracks (both Good and Missing) and Segments (again, both Good and Missing). That database is what is actually used by the HHT web application.
+In the current (Oct. 2019) HHT data update process, these shapefiles are then loaded into an SQL database of the Tracks and Segments. That database is what is actually used by the HHT web application.  
+
+Version 3, when released will use a PostgreSQL database instead fo relying on shapefiles.
 
 
 For additional information, contact:  
