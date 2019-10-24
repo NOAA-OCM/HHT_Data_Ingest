@@ -14,25 +14,28 @@ This process will be used in the HHT preprocessing program
 to create a dictionary to tag each segment with it's ENSO state.
 
 """
-def ensoDict(dataDirectory):
-    import urllib.request # Works on more systems at the moment
-    """ This bit will get the raw text data from the CPO data site """
-    ensoURL = 'http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt'
-    print ("Checking ENSO ONI data from:\n",
-           ensoURL, "\n")
-           
+def ensoDict():
+    import configparser
+    """ Declarations and Parameters from Configuration file"""
+    config = configparser.ConfigParser()
+    config.read('./config.ini')
+    dataDir = config.get('DIRECTORIES','DATA')
+    ensoFile = dataDir + "/ensoData.txt"
+# =============================================================================
+#     """ This bit will get the raw text data from the CPO data site """
+#     ensoURL = config.get('DOWNLOAD','ENSOURL')
+# #    ensoURL = 'http://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt'
+#     print ("Checking ENSO ONI data from:\n",
+#            ensoURL, "\n")
+#            
+# =============================================================================
     try:
-        with urllib.request.urlopen(ensoURL) as r:
+        with open(ensoFile) as r:
             allLines = str(r.read())
-            lines = allLines.split("\\n") #Web version requires the escape char to be escaped for some reason
-    except urllib.error.URLError:
-        cacheURL = dataDirectory + "ENSO_cache_20150616.txt"
-        print ("WARNING: Web access not available for ", ensoURL,
-            ".\n Using cached version at ", cacheURL)
-        cached = open(cacheURL,'r')
-        allLines = str(cached.read())
-        print ("Cache read successfully")
-        lines = allLines.split("\n") #Cached version does not need the escape char to be escaped for some reason
+            lines = allLines.split("\n") #Web version requires the escape char to be escaped
+    except:
+        print ("Error reading ENSO FIle")
+
     numLines = len(lines)
     print("\n",numLines,"lines in initial ENSO data file.  First header line\n",
           " and any empty lines at the end will be dropped")
@@ -117,4 +120,7 @@ def ensoDict(dataDirectory):
         ensoState[vals[k][0]] = enso[k]
     
     return ensoState
-    
+""" This is the test code to simply run the rptDict function by itself 
+    It is not called when the program is included in another program. """        
+foo = ensoDict()
+print (foo)
