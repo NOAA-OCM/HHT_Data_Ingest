@@ -49,7 +49,8 @@ def ensoDict():
             isoYRMON = "%s-%02i" % ((foo[0]),int(foo[1]))
             vals.append([isoYRMON,float(foo[4])])
     numRows = len(vals)
-    enso = [0]*numRows # Initialize ENSO state to Neutral flag
+    enso = ["0"]*numRows # Initialize ENSO state to Neutral flag
+    # enso = [0]*numRows # Initialize ENSO state to Neutral flag
     #print("\n Data record length is ",len(enso),"\n") 
     #print(vals[0:3],vals[numRows-3:])
         
@@ -99,9 +100,11 @@ def ensoDict():
     for l in range(2,numRows-3):
         testStat[l] = sum(rawENSOState[(l-2):(l+3)])
         if testStat[l] == 5:
-            enso[l-2:l+3] = [1]*5
+            enso[l-2:l+3] = ["P"]*5
+            # enso[l-2:l+3] = [1]*5
         elif testStat[l] == -5:
-             enso[l-2:l+3] = [-1]*5
+             enso[l-2:l+3] = ["N"]*5
+            #  enso[l-2:l+3] = [-1]*5
     #    print(l,vals[l],rawENSOState[l],testStat,"from:",
     #          rawENSOState[(l-2):(l+3)],enso[l])
              

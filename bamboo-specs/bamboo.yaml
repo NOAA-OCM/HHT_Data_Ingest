@@ -1,0 +1,79 @@
+#Hurricanes Data Ingestion
+version: 2
+plan:
+  project-key: HDI
+  key: PLAN
+  name: Hurricanes Data Build
+
+stages:
+  - Build Stage:
+      jobs:
+        - Download Raw Files
+
+Download Raw Files:
+  tasks:
+    - script:
+        - pip install --no-cache-dir -r requirements.txt
+        - python3 downloadHurricaneData.py
+        - python3 annualDataUpdate.py
+        - chmod -R 777 data
+        - chmod -R 777 results
+  docker:
+    image: semaphoreci/python:3.7
+
+  artifacts:
+    # Define multiple artifacts with the object divisor in YAML
+    - name: data
+      location: data
+      pattern: "**/*.*"
+      required: true
+      shared: true
+    - name: build
+      location: results
+      pattern: "**/*.*"
+      required: true
+      shared: true
+
+---
+version: 2
+# source plan always has to be in this pattern: <plan:project-key>-<plan:key>
+deployment:
+  name: Hurricanes Database Deploy
+  source-plan: HDI-PLAN
+
+release-naming:
+  next-version-name: release-1
+  applies-to-branches: true
+  auto-increment: true
+
+environments:
+  - dev
+
+dev:
+  tasks:
+    - clean
+    - artifact-download:
+        artifacts:
+          - name: build
+            destination: build
+    - script:
+        - ogr2ogr -f "PostgreSQL" PG:"dbname=hurricanes" Segments_WGS84.shp -overwrite -lco GEOMETRY_NAME=geom -nlt PROMOTE_TO_MULTI -nln spatial.segments Segments_WGS84
+        # writes data_version table to the hurricanes database that records the build number for each table deployed via the bamboo
+        - ogr2ogr -f "PostgreSQL" PG:"dbname=hurricanes" PG:"dbname=hurricanes" -sql "select 'tracks' as table, '$bamboo_buildNumber' as build_number, '$bamboo_deploy_release' as release_number" -overwrite -nln spatial.data_versions
+        - ogr2ogr -f "PostgreSQL" PG:"dbname=hurricanes" Tracks_WGS84.shp -overwrite -lco GEOMETRY_NAME=geom -nlt PROMOTE_TO_MULTI -nln spatial.tracks Tracks_WGS84
+        # writes data_version table to the hurricanes database that records the build number for each table deployed via the bamboo
+        - ogr2ogr -f "PostgreSQL" PG:"dbname=hurricanes" PG:"dbname=hurricanes" -sql "select 'segments' as table, '$bamboo_buildNumber' as build_number, '$bamboo_deploy_release' as release_number" -overwrite -nln spatial.data_versions
+
+  docker:
+    image: geographica/gdal2:2.4.2
+
+  variables:
+    PGHOST: ocm-pg-hurricanes-dev.postgres.database.azure.com
+    PGPORT: 5432
+    PGUSER: ocmpgadmin@ocm-pg-hurricanes-dev
+    PGPASSWORD: BAMSCRT@0@0@2BDAzbUqCIUwIEYEnU3hlA==
+    PGSSLMODE: require
+    PG_USE_COPY: true
+
+  triggers:
+    - build-success

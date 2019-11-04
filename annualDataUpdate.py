@@ -96,11 +96,11 @@ logFile = open(logFileName,'w')
 
 """ Define output shapefile names """
 if WEBMERC:
-    goodSegmentFileName = resultsDir+'/Segments_WebMerc'
-    goodStormFileName = resultsDir+'/Tracks_WebMerc'
+    goodSegmentFileName = resultsDir+'/NewSegments_WebMerc'
+    goodStormFileName = resultsDir+'/NewTracks_WebMerc'
 else:
-     goodSegmentFileName = resultsDir+'/Segments_WGS84'
-     goodStormFileName = resultsDir+'/Tracks_WGS84'
+     goodSegmentFileName = resultsDir+'/NewSegments_WGS84'
+     goodStormFileName = resultsDir+'/NewTracks_WGS84'
 
 
 """ Define JSON filenames """
@@ -292,7 +292,7 @@ def getWindPres(values):
                  144,   # Neumann
                  62,    # HKO (Hong Kong)
                  45,    # TOKYO
-                 95,    # BOM
+                 95,    # BOM (Australia)
                  138,   # TD9635
                  149,   # MLC
                  75,    # REUNION (France)
@@ -302,7 +302,7 @@ def getWindPres(values):
 
 
     for i in possibles:
-        if(values[i] != ' '): #Good data exists, use it
+        if(values[i] != ' '): # Good data exists, use it
             windSpd = values[i]
             pressure = values[i+1]
             break
@@ -326,16 +326,12 @@ class Storm(object):
         self.startLon = 0.0
         self.numSegs = 0
         self.maxSaffir = "NR"
-        self.enso = ""
+        self.enso = "Y"
         self.source = ""  # 0 = IBTrACS, 1 or 2 = HURDAT2 Atl, NEPAC
         self.segs = []
 
 class Observation(object):
     def __init__(self,time,lat,lon,wsp,pres,nature):
-#==============================================================================
-#         self.time = time.strip()
-#         print(self.time)
-#==============================================================================
         try:
             self.time = dt.datetime.strptime(time,'%Y-%m-%d %H:%M:%S')
 #            break
@@ -348,8 +344,6 @@ class Observation(object):
         self.startLon = float(lon)
         if wsp == ' ' or float(wsp) < 0 : # N.B. ' ' is the IBTrACSv04 no data value
             self.wsp = float(-1.0)
-#            self.wsp = float('NaN') #try NaN for missing wind speeds:
-#            NAN not working with graphing portion of web site.  Go back to -1 as flag
         else:
             self.wsp = float(wsp)
         if pres == ' ' or float(pres) < 0:
@@ -361,10 +355,13 @@ class Observation(object):
 class Segment(Observation):
     def __init__(self,time,lat,lon,wsp,pres,nature):
         super().__init__(time,lat,lon,wsp,pres,nature)
-        self.endLat = float(lat)# Test change flot 0 to float9lat/lon) to make non-int.
+        self.endLat = float(lat)
         self.endLon = float(lon)
         self.saffir = ""
-        self.enso = None
+        self.enso = "X"
+        self.amm = "U"
+        self.pdo = "U"
+        self.amo = "U"
 
 
 """ Main processing begins here   """
@@ -438,7 +435,7 @@ for i, file in enumerate(ibFiles):
              thisStorm.name = thisStorm.name + " " \
                  + thisStorm.startTime.strftime('%Y') \
                  + "(P)"
-             print("Labeling as provisional: ", thisStorm.name )
+            #  print("Labeling as provisional: ", thisStorm.name )
          else:
              thisStorm.name = thisStorm.name + " " \
              + thisStorm.startTime.strftime('%Y')
@@ -521,7 +518,7 @@ for i, file in enumerate(ibFiles):
                          thisStorm.name = thisStorm.name + " " \
                              + thisStorm.startTime.strftime('%Y') \
                              + "(P)"
-                         print("Labeling as provisional: ", thisStorm.name )
+                        #  print("Labeling as provisional: ", thisStorm.name )
                      else:
                          thisStorm.name = thisStorm.name + " " \
                          + thisStorm.startTime.strftime('%Y')
@@ -650,7 +647,7 @@ for i, file in enumerate(hFiles):
                 thisStorm.name = thisStorm.name + " " \
                      + thisStorm.startTime.strftime('%Y') \
                      + "(P)"
-                print("Labeling as provisional: ", thisStorm.name )
+                # print("Labeling as provisional: ", thisStorm.name )
             else:
                 thisStorm.name = thisStorm.name + " " \
                  + thisStorm.startTime.strftime('%Y')
@@ -690,7 +687,7 @@ nDups = 0   # Initialize number of duplicate storms
 dupIndex = nUnique-1 # Index of last added storm.  Only need to check this storm.
 
 for i in range(1,len(allSorted)):  # Cycle through all the Sorted storms
-    if(allSorted[i].uid == allStorms[dupIndex].uid ):
+    if(allSorted[i].uid == allStorms[dupIndex].uid and allSorted[i].basin == allStorms[dupIndex].basin):
         # Duplicate so pick according to USE_HURDAT flag
         if USE_HURDAT:
             if allSorted[i].source > 0: #This is a HURDAT record so replace old one
@@ -773,8 +770,7 @@ for i, storm in enumerate(allStorms):
         """ Get data for ENSO stage for each segment by start time """
        # thisKey = storm.segs[j].time[:7]
         thisKey = storm.segs[j].time.strftime('%Y-%m')
-        storm.segs[j].enso = ensoLookup.get(thisKey)
-        #print(thisKey, ensoLookup.get(thisKey),storm.segs[j].enso)
+        storm.segs[j].enso = ensoLookup.get(thisKey) if ensoLookup.get(thisKey) != None else "U"
         """ Find Max Winds and Saffir-Simpson and Min Pressures """
         if storm.segs[j].wsp > storm.maxW: # New Max found so update MaxW and SS
             storm.maxW = storm.segs[j].wsp
@@ -804,10 +800,8 @@ for i, storm in enumerate(allStorms):
         thisKey = storm.segs[jLast].time.strftime('%Y-%m')
     except:
         print(j, storm.segs[jLast].time)
-    #thisKey = storm.segs[jLast].time[:7]
-    storm.segs[jLast].enso = ensoLookup.get(thisKey)
-#    storm.segs[jLast].enso = ensoLookup[storm.segs[jLast].time[:7]]
-
+    storm.segs[jLast].enso = ensoLookup.get(thisKey) if ensoLookup.get(thisKey) != None else "U"
+    
     """ If Maximum Wind and Minimum Pressure are still the inital values,
     replace them with MISSING VALUE FLAGS """
     if storm.maxW == -99.:
@@ -820,42 +814,26 @@ for i, storm in enumerate(allStorms):
 # print(sorted(uniqueNatures))
 #==============================================================================
 
-""" ==========================================================================
-    Got all data ready, now initialize and write out spatial objects
-    with geopandas and shapely
-==========================================================================="""
-
-# =============================================================================
-# """ Create Empty geodataframes """
-# tracks = gpd.GeoDataFrame()
-# segments = gpd.GeoDataFrame()
-# 
-# # Add geometry column
-# tracks['geometry'] = None
-# segments['geometry'] = None
-# 
-# =============================================================================
-#Check this link out: http://geopandas.org/mergingdata.html
-
-stormFields = [['STRMTRKOID','N','10'],
-               ['STORMID','C','56'],
-               ['MaxWindSpd','N','19'],
-               ['Basin','C','10'],
-               ['Disp_Name','C','81'],
-               ['DateRange','C','140'],
-               ['Begin_Date','D','8'],
-               ['End_Date','D','8'],
-               ['SS_Scale','C','10'],
-               ['FiltYears','C','10'],
-               ['FiltMonths','C','10'],
-               ['FiltBasins','C','10'],
-               ['FiltMaxSS','C','10'],
-               ['Min_Press','N','10'],
-               ['StrmRptURL','C','254'],
-               ['In10sOrder','N','10'], # End of Previous Attributes
-               ['DetailsURL','C','254'],
-               ['NumObs','C','10'],
-               ['ENSO','C','10']]
+stormFields = [
+               ['STORM_ID','C','56'],
+               ['NAME','C','81'],
+               ['BEGIN_DATE','D','8'],
+               ['END_DATE','D','8'],
+               ['MAX_WIND','N','9'],
+               ['MIN_PRESS','N','10'],
+               ['MAXSSSCALE','C','5'],
+               ['BASIN','C','10'],
+               ['YEARS','C','10'],
+               ['MONTHS','C','10'],
+               ['NHC_URL','C','254'],
+               ['IBTRACSURL','C','254']
+            #    ['DateRange','C','140'],
+            #    ['FiltBasins','C','10'],
+            #    ['FiltMaxSS','C','10'],
+            #    ['In10sOrder','N','10'], # End of Previous Attributes
+            #    ['NumObs','C','10'],
+            #    ['ENSO','C','10']
+               ]
 #==============================================================================
 # stormFields = ['UID','Name','StartDate','EndDate','MaxWind','MinPress',
 #                'NumObs','MaxSaffir','ENSO']
@@ -869,26 +847,31 @@ for attribute in stormFields:
 
 
 """ For SEGMENTS : """
-segmentFields = [['SEGMNTOID','N','10'],
-                 ['STORMID','C','58'],
-                 ['MaxWindSpd','N','9'],
-                 ['BeginObHr','N','9'],
-                 ['BeginLat','C','10'],  # Why C?  Is that character? Need a float!
-                 ['BeginLon','C','10'],
-                 ['Min_Press','C','10'],
-                 ['Basin','C','10'],
-                 ['SS_Scale','C','10'],
-                 ['DateNTime','C','20'],
-                 ['DMSW_1min','C','10'],
-                 ['DispName','C','150'],
-                 ['DispDate','C','20'],
-                 ['DMin_Press','C','10'],
-                 ['DDateNTime','C','20'],
-                 ['SegmntOrdr','N','12'],#End of previous attributes
-                 ['Nature','C','20'],
-                 ['ENSO','C','20'],
-                 ['EndLat','C','20'],
-                 ['EndLon','C','20']]
+segmentFields = [
+                 ['SEGMENT_ID','N','10'],
+                 ['STORM_ID','C','58'],
+                 ['NAME','C','150'],
+                 ['TIME','C','20'],
+                 ['MAX_WIND','N','9'],
+                 ['MIN_PRESS','N','10'],
+                 ['SS_SCALE','C','5'],
+                 ['BASIN','C','5'],
+                 ['BEGIN_LAT','C','10'],
+                 ['BEGIN_LON','C','10'],
+                 ['END_LAT','C','20'],
+                 ['END_LON','C','20'],
+                 ['ENSO_STAGE','C','5'],
+                 ['AMM_STAGE','C','5'],
+                 ['PDO_STAGE','C','5'],
+                 ['AMO_STAGE','C','5']
+                #  ['DMSW_1min','C','10'],
+                #  ['BeginObHr','N','9'],
+                #  ['DispDate','C','20'],
+                #  ['DMin_Press','C','10'],
+                #  ['DDateNTime','C','20'],
+                #  ['SegmntOrdr','N','12'],#End of previous attributes
+                #  ['Nature','C','20'],
+                 ]
 
 """ Create and initalize the fields for the needed Tracks Shapefiles """
 goodSegments = shapefile.Writer(goodSegmentFileName) #, shapeType = 3) # New shapefile
@@ -1026,43 +1009,37 @@ for i, storm in enumerate(allStorms):
         goodSegCoords.append(segCoords)
         goodSegParams.append([segmentOID,     # Storm Object ID,
                        storm.uid,           # Storm ID
+                       storm.name,          # Display Storm Name
+                       dateTime,            # Date and Time
                        thisSegment.wsp,     # Max. Sustained Wind
-                       begObsHour,          # Begin Observation Hour Why?
+                       thisSegment.pres,    # Min Pressure
+                       thisSegment.saffir,  # Saffir Simpson Scale
+                       basin,               # Basin
                        thisSegment.startLat,# Begin Lat
                        thisSegment.startLon,# Begin Long.
-                       thisSegment.pres,    # Min Pressure
-                       basin,               # Basin
-                       thisSegment.saffir,  # Saffir Simpson Scale
-                       dateTime,            # Date and Time
-                       thisSegment.wsp,     # Display Max. Sustained Wind
-                       storm.name,          # Display Storm Name
-                       dispDate,            # Display Date
-                       thisSegment.pres,    # Display Min Pressure
-                       dispDateTime,        # Display Date and Time
-                       goodSegNum,          # Segment Order, a unique ID
-                       # End of Previous Attributes
-                       thisSegment.nature,  # Nature (not quite SS)
-                       thisSegment.enso,    # ENSO Flag
                        thisSegment.endLat,  # End Lat
-                       thisSegment.endLon] )  # End Long.
+                       thisSegment.endLon,
+                       thisSegment.enso,    # ENSO Flag
+                       thisSegment.amm,    # ENSO Flag
+                       thisSegment.pdo,   # ENSO Flag
+                       thisSegment.amo    # ENSO Flag
+                    #    thisSegment.wsp,     # Display Max. Sustained Wind
+                    #    thisSegment.nature,  # Nature (not quite SS)
+                    #    dispDate,            # Display Date
+                    #    thisSegment.pres,    # Display Min Pressure
+                    #    dispDateTime,        # Display Date and Time
+                    #    goodSegNum,          # Segment Order, a unique ID
+                    #     begObsHour,          # Begin Observation Hour Why?
+                       ] )  # End Long.
         goodSegIndx.append(goodSegNum)
         goodSegNum += 1
 
 
-#==============================================================================
-#     print(trackCoords)
-#     foo = input(" any key to continue")
-#==============================================================================
     """ Find ENSO state for start of the storm """
-    storm.enso = ensoLookup.get(storm.segs[0].time.strftime('%Y-%m'))
-    """ Need to output these fields:
-            'STORMID','MxWind1min','BASIN','Disp_Name','DDateRange',
-               'BegObDate','EndObDate','D_SaffirS',
-               'FP_Years','FP_Months','FP_CR','FP_MSS','FP_MP',
-               'StrmRptURL','In10sOrder' # End of Previous Attributes
-               'NumObs','ENSO']"""
+    thisKey = storm.segs[0].time.strftime('%Y-%m')
+    storm.enso = ensoLookup.get(thisKey) if ensoLookup.get(thisKey) != None else "U"
+
     """ Extra values to match old (pre-2015) database structure """
-#    basin = rptLookup.setdefault(storm.name,Missing)[1]
     rptURL = rptLookup.setdefault(storm.name,Missing)[0]
     detailsURL = detailsBaseURL + storm.uid
     strmStart = storm.segs[0].time
@@ -1099,26 +1076,27 @@ for i, storm in enumerate(allStorms):
     """ Append track to appropriate stormTracks list """
     numGoodObs += 1
     goodTracks.line(trackCoords ) # Add the shape
-    goodTracks.record(stormOID,     # Storm Object ID,
-                   storm.uid,       # StormID
-                   storm.maxW,      # Max Sustained WInd, 1 min ave period
-                   basin,           # Basin
+    goodTracks.record(#stormOID,     # Storm Object ID,
+                   storm.uid,       # Storm_ID
                    storm.name,      # Display Storm Name
-                   dateRng,         # Display Date Range
                    begObDate, # Begin Observation Date
                    endObDate,   # End Observation Date
+                   storm.maxW,      # Max Sustained WInd, 1 min ave period
+                   storm.minP,      # Filter Param: Minimum Pressure
                    storm.maxSaffir, # Display Saffir Simpson
+                   basin,           # Basin
                    filtYrs,         # Filter Param. Years
                    filtMons,        # Filter Param. Months
-                   filtClimReg,     # Filter Param. Climate Regions
-                   storm.maxSaffir, # Filter Param. Saffir Simpson 2 letter
-                   storm.minP,      # Filter Param: Minimum Pressure
                    rptURL,          # Storm Report URL
-                   intensOrder,        # Intensity Order (numeric)
-                   # Extra Attributes below
-                   detailsURL,          # Storm Report URL
-                   storm.numSegs,   # Number of segments in this Track
-                   storm.enso)      # ENSO Flag
+                   detailsURL          # Storm Report URL
+                #    filtClimReg,     # Filter Param. Climate Regions
+                #    storm.maxSaffir, # Filter Param. Saffir Simpson 2 letter
+                #    storm.enso,
+                #    intensOrder,        # Intensity Order (numeric)
+                #    # Extra Attributes below
+                #    dateRng,         # Display Date Range
+                #    storm.numSegs,   # Number of segments in this Track
+                   )      # ENSO Flag
 
     """ Append the names and the begin and end years to lists so that
         JSON files of the unique names and years can be created for use
