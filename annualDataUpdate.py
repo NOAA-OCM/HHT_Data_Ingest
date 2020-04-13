@@ -96,11 +96,11 @@ logFile = open(logFileName,'w')
 
 """ Define output shapefile names """
 if WEBMERC:
-    goodSegmentFileName = resultsDir+'/NewSegments_WebMerc'
-    goodStormFileName = resultsDir+'/NewTracks_WebMerc'
+    goodSegmentFileName = resultsDir+'/Segments_WebMerc'
+    goodStormFileName = resultsDir+'/Tracks_WebMerc'
 else:
-     goodSegmentFileName = resultsDir+'/NewSegments_WGS84'
-     goodStormFileName = resultsDir+'/NewTracks_WGS84'
+     goodSegmentFileName = resultsDir+'/Segments_WGS84'
+     goodStormFileName = resultsDir+'/Tracks_WGS84'
 
 
 """ Define JSON filenames """
@@ -772,7 +772,7 @@ for i, storm in enumerate(allStorms):
         thisKey = storm.segs[j].time.strftime('%Y-%m')
         storm.segs[j].enso = ensoLookup.get(thisKey) if ensoLookup.get(thisKey) != None else "U"
         """ Find Max Winds and Saffir-Simpson and Min Pressures """
-        if (storm.segs[j].wsp > storm.maxW && storm.segs[j].saffir != "ET"): # New Max found so update MaxW and SS
+        if (storm.segs[j].wsp > storm.maxW and storm.segs[j].saffir != "ET"): # New Max found so update MaxW and SS
             storm.maxW = storm.segs[j].wsp
             storm.maxSaffir = storm.segs[j].saffir
         if storm.segs[j].pres < storm.minP and storm.segs[j].pres > 0:
@@ -783,17 +783,15 @@ for i, storm in enumerate(allStorms):
     starting location, but offset by 0.01 degrees.
     This allows for the creation of a valid attributed line for every
     actual observation."""
-    storm.segs[jLast].endLat = float(storm.segs[jLast].startLat) - 
-                                   (float(storm.segs[jLast].startLat) - float(storm.segs[jLast-1].startLat)) * 0.005
-   storm.segs[jLast].endLon = float(storm.segs[jLast].startLon) - 
-                                   (float(storm.segs[jLast].startLon) - float(storm.segs[jLast-1].startLon)) * 0.005
+    storm.segs[jLast].endLat = float(storm.segs[jLast].startLat) - (float(storm.segs[jLast].startLat) - float(storm.segs[jLast-1].startLat)) * 0.001
+    storm.segs[jLast].endLon = float(storm.segs[jLast].startLon) - (float(storm.segs[jLast].startLon) - float(storm.segs[jLast-1].startLon)) * 0.001
  #   storm.segs[jLast].endLon = float(storm.segs[jLast].startLon + 0.0001)
 
     """ --- Saffir-Simpson value for each segment"""
     storm.segs[jLast].saffir = getCat(storm.segs[jLast].nature,
                                 (storm.segs[jLast].wsp))
     """ Find Max Winds and Saffir-Simpson and Min Pressures """
-    if storm.segs[jLast].wsp > storm.maxW: # New Max found so update MaxW and SS
+    if (storm.segs[jLast].wsp > storm.maxW and storm.segs[jLast].saffir != "ET") : # New Max found so update MaxW and SS
         storm.maxW = storm.segs[jLast].wsp
         storm.maxSaffir = storm.segs[jLast].saffir
     if storm.segs[jLast].pres < storm.minP and storm.segs[jLast].pres > 0:
