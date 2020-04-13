@@ -783,8 +783,11 @@ for i, storm in enumerate(allStorms):
     starting location, but offset by 0.01 degrees.
     This allows for the creation of a valid attributed line for every
     actual observation."""
-    storm.segs[jLast].endLat = float(storm.segs[jLast].startLat + 0.0001)
-    storm.segs[jLast].endLon = float(storm.segs[jLast].startLon + 0.0001)
+    storm.segs[jLast].endLat = float(storm.segs[jLast].startLat) - 
+                                   (float(storm.segs[jLast].startLat) - float(storm.segs[jLast-1].startLat)) * 0.005
+   storm.segs[jLast].endLon = float(storm.segs[jLast].startLon) - 
+                                   (float(storm.segs[jLast].startLon) - float(storm.segs[jLast-1].startLon)) * 0.005
+ #   storm.segs[jLast].endLon = float(storm.segs[jLast].startLon + 0.0001)
 
     """ --- Saffir-Simpson value for each segment"""
     storm.segs[jLast].saffir = getCat(storm.segs[jLast].nature,
