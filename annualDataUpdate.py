@@ -455,7 +455,7 @@ for i, file in enumerate(ibFiles):
                  vals = lineVals.split(",")
                  if vals[0] == thisStorm.uid :  # Same storm so add the record
                      tmpWind, tmpPres = getWindPres(vals)
-                     observation = Segment(vals[6],  # ISO 8601 Time
+                     observation = Segment(vals[6], # ISO 8601 Time
                                            vals[8], # Lat
                                            vals[9], # Lon
                                            tmpWind, # Wind from best estimate
