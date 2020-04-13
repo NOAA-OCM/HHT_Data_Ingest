@@ -772,7 +772,7 @@ for i, storm in enumerate(allStorms):
         thisKey = storm.segs[j].time.strftime('%Y-%m')
         storm.segs[j].enso = ensoLookup.get(thisKey) if ensoLookup.get(thisKey) != None else "U"
         """ Find Max Winds and Saffir-Simpson and Min Pressures """
-        if storm.segs[j].wsp > storm.maxW: # New Max found so update MaxW and SS
+        if (storm.segs[j].wsp > storm.maxW && storm.segs[j].saffir != "ET"): # New Max found so update MaxW and SS
             storm.maxW = storm.segs[j].wsp
             storm.maxSaffir = storm.segs[j].saffir
         if storm.segs[j].pres < storm.minP and storm.segs[j].pres > 0:
